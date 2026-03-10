@@ -14,7 +14,14 @@ function UseRefExample() {
       <input className="inputEffect" ref={inputRef} type="text" placeholder="Escribe algo..." />
       <br/> <br />
       <button onClick={focusInput} id="buttonRef">Enfocar Input</button>
+
+    <br /><br />
+      <div>
+        <a href="/"><button>Volver al Home</button></a>
+      </div>
     </div>
+
+    
   );
 }
 
