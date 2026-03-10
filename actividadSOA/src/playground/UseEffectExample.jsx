@@ -30,6 +30,10 @@ function UseEffectExample(){
 
       <p className="holaEffect">Hola {nombre}</p>
 
+      <div>
+        <a href="/"><button>Volver al Home</button></a>
+      </div>
+
     </div>
   );
 }
