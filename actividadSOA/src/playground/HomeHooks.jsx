@@ -22,6 +22,27 @@ function HomeHooks() {
         </tr>
 
         <tr>
+            <td className='name'>useSyncExternalStore</td>
+            <td>Hook para sincronizar React con datos externos</td>
+            <td>Almacenamiento</td>
+            <td><a href="/useSyncExternalStore">Ver</a></td>
+        </tr>
+        
+        <tr>
+            <td className='name'>UseId</td>
+            <td>Hook para generar un ID único y estable</td>
+            <td>Identificación</td>
+            <td><a href="/useId">Ver</a></td>
+        </tr>
+
+         <tr>
+            <td className='name'>useImperativeHandle</td>
+            <td>Hook para personalizar la instancia de referencia expuesta por un componente</td>
+            <td>Referencia</td>
+            <td><a href="/useImperativeHandle">Ver</a></td>
+        </tr>
+
+        <tr>
             <td className='name'>useEffect</td>
             <td>Hook para manejar efectos secundarios en componentes funcionales</td>
             <td>Efecto</td>
