@@ -102,3 +102,16 @@ th{
     font-size: 30px;
     color: yellow;
 }
+
+.inputEffect{
+    padding: 10px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    
+}
+.holaEffect{
+    color: rgb(255, 238, 0);
+    font-size: 25px;
+    
+}
