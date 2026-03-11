@@ -12,6 +12,8 @@ import UseReducerExample from "./playground/UseReducerExample";
 import UseImperativeHandleExample from "./playground/UseImperativeHandleExample";
 import UseSyncExternalStore from "./playground/UseSyncExternalStoreExample";
 import UseIdExample from "./playground/UseIdExample";
+import UseLayoutEffect from "./playground/UseLayoutEffectExample";
+import UseInsertionEffect from "./playground/UseInsertionEffectExample";
 
 function App() {
   return (
@@ -28,6 +30,8 @@ function App() {
         <Route path="/useImperativeHandle" element={<UseImperativeHandleExample />} />
         <Route path="/useSyncExternalStore" element={<UseSyncExternalStore />} />
         <Route path="/useId" element={<UseIdExample />} />
+        <Route path="/useLayoutEffect" element={<UseLayoutEffect />} />
+        <Route path="/useInsertionEffect" element={<UseInsertionEffect />} />
 
       </Routes>
     </BrowserRouter>

@@ -126,3 +126,13 @@ th{
   color: yellow;
   font-size: 25px;
 }
+
+#loading{
+  color: #5792ff;
+  font-size: 20px;
+}
+
+#success{
+  color: #2ed573;
+  font-size: 23px;
+}
