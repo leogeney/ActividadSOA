@@ -21,6 +21,84 @@ function HomeHooks() {
             <td><a href="/useState">Ver</a></td>
         </tr>
 
+
+        
+
+        <tr>
+            <td className='name'>useCallback</td>
+            <td>Hook para memorizar funciones en componentes funcionales</td>
+            <td>Memorización</td>
+            <td><a href="/useCallback">Ver</a></td>
+        </tr>
+
+
+        <tr>
+            <td className='name'>useDeferredValue</td>
+            <td>Hook para deferir el valor de un estado en componentes funcionales</td>
+            <td>Memorización</td>
+            <td><a href="/useDeferredValue">Ver</a></td>
+        </tr>
+
+        
+
+        <tr>
+            <td className='name'>useDebugValue</td>
+            <td>Hook para mostrar un valor personalizado en las herramientas de depuración de React</td>
+            <td>Depuración</td>
+            <td><a href="/useDebugValue">Ver</a></td>
+        </tr>
+
+        <tr>
+            <td className='name'>Use</td>
+            <td>Hook para generar un ID único y estable</td>
+            <td>Identificación</td>
+            <td><a href="/use">Ver</a></td>
+        </tr>
+
+        <tr>
+            <td className='name'>useOptimistic</td>
+            <td>Hook para manejar datos optimistas en componentes funcionales</td>
+            <td>NEW </td>
+            <td><a href="/useOptimistic">Ver</a></td>
+        </tr>
+
+        <tr>
+            <td className='name'>useFormStatus</td>
+            <td>Hook para manejar el estado de un formulario en componentes funcionales</td>
+            <td>NEW</td>
+            <td><a href="/useFormStatus">Ver</a></td>
+        </tr>
+
+        <tr>
+            <td className='name'>useActionState</td>
+            <td>Hook para manejar el estado de una acción en componentes funcionales</td>
+            <td>NEW</td>
+            <td><a href="/useActionState">Ver</a></td>
+        </tr>
+    
+
+
+
+
+
+
+        
+
+
+        <tr>
+            <td className='name'>useInsertionEffect</td>
+            <td>Hook para manejar efectos de inserción en componentes funcionales</td>
+            <td>Efecto</td>
+            <td><a href="/useInsertionEffect">Ver</a></td>
+        </tr>
+
+        <tr>
+            <td className='name'>useLayoutEffect</td>
+            <td>Hook para manejar efectos secundarios en componentes funcionales</td>
+            <td>Efecto</td>
+            <td><a href="/useLayoutEffect">Ver</a></td>
+        </tr>
+
         <tr>
             <td className='name'>useSyncExternalStore</td>
             <td>Hook para sincronizar React con datos externos</td>
