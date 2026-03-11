@@ -11,6 +11,7 @@ function UseRefExample() {
   return (
     <div>
       <h1>Use Ref</h1>
+      <p>Hook para crear una referencia mutable en componentes funcionales</p>
       <input className="inputEffect" ref={inputRef} type="text" placeholder="Escribe algo..." />
       <br/> <br />
       <button onClick={focusInput} id="buttonRef">Enfocar Input</button>

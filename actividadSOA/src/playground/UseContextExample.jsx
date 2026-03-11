@@ -10,6 +10,7 @@ function UseContextExample() {
     
     <UsuarioContext.Provider value={nombreUsuario}>
       <h1>useContext</h1>
+      <p>Guarda el resultado de un cálculo costoso para no repetirlo en cada renderizado. Solo se vuelve a calcular si sus dependencias cambian</p>
       <ComponenteHijo />
       
       <br />

@@ -28,6 +28,7 @@ function UseInsertionEffectExample() {
   return (
     <div>
       <h1>useInsertionEffect</h1>
+      <p>Hook para manejar efectos de inserción en componentes funcionales</p>
       
       <div className="caja-dinamica">
         Esta caja usa estilos insertados dinámicamente.

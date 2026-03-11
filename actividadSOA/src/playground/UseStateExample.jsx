@@ -23,6 +23,7 @@ function disminuir(){
   return (
     <div>
       <p className="tittle-useState">Use State</p>
+      <p>Hook para manejar el estado en componentes funcionales</p>
       <p className="count">Contador: {count}</p>
       <div className="buttonState">
         <button onClick={aumentar}>SUMAR +</button>
