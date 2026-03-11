@@ -50,7 +50,7 @@ function HomeHooks() {
 
         <tr>
             <td className='name'>Use</td>
-            <td>Hook para generar un ID único y estable</td>
+            <td>Sirve para leer el valor de recursos como Promises o Contextos incluso dentro de condicionales o bucles</td>
             <td>Identificación</td>
             <td><a href="/use">Ver</a></td>
         </tr>
@@ -150,7 +150,7 @@ function HomeHooks() {
 
         <tr>
             <td className='name'>useReducer</td>
-            <td>Hook para manejar el estado en componentes funcionales</td>
+            <td>Para gestionar estados complejos, permitiendo manejar múltiples actualizaciones relacionadas</td>
             <td>Estado</td>
             <td><a href="/useReducer">Ver</a></td>
         </tr>

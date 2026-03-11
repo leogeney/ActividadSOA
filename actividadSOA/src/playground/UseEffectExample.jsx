@@ -20,7 +20,8 @@ function UseEffectExample(){
   return (
     <div>
 
-      <h1>Use Effect (Cambia el titulo)</h1>
+      <h1>Use Effect </h1>
+      <p>Hook para manejar efectos secundarios en componentes funcionales</p>
 
       <input className="inputEffect"
         type="text"

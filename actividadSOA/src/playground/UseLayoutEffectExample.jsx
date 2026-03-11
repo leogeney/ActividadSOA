@@ -15,6 +15,7 @@ function UseLayoutEffectExample() {
   return (
     <div>
       <h1>UseLayoutEffect</h1>
+      <p>Hook para manejar efectos de layout en componentes funcionales</p>
 
       {
       

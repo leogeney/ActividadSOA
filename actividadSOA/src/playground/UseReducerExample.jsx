@@ -22,6 +22,7 @@ function UseReducerExample() {
   return (
     <div style={estilo}>
       <h1>useReducer Simple</h1>
+      <p>para gestionar estados complejos, permitiendo manejar múltiples actualizaciones relacionadas</p>
       <p>El modo oscuro está: <strong>{esOscuro ? "Activado" : "Desactivado"}</strong></p>
 
       
