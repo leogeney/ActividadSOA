@@ -1,23 +1,70 @@
+import { useState } from "react";
+
+
 function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [error, setError] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    
+    if (!email || !password) {
+      setError("Todos los campos son obligatorios");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      setError("Email inválido");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("La contraseña debe tener mínimo 6 caracteres");
+      return;
+    }
+
+    setError("");
+    alert("Datos correctos: " + email + " - " + password);
+  };
+
   return (
     <div>
       <h2>Login</h2>
-
-      <form>
-        <div className="Addtext">
-            <label className="title">Username or email address</label>
-            <input type="text" id="nombre" name="nombre" placeholder="Username or email" />
+ {error && <p style={{ color: "red" }}>{error}</p>}
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>Email</label>
+          <input
+            type="text"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)} required
+          />
         </div>
 
-
-
-        <div className="Addtext">
-            <label className="title">Password</label>
-            <input type="password" id="password" name="password" placeholder="Password"/>
+        <div>
+          <label>Password</label>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
-        <input type="submit" value="Login"  className="enviar"/>
+
        
-        <a href="/register">Don't have an account? Register</a>
+
+        <input type="submit" value="Login"  className="login"/>
+
+      
+        <div className="links">
+            <a href="/register">Register</a>
+            <a href="/cambiarcontraseña">Cambiar contraseña</a>
+            <a href="/recuperarcuenta">Recuperar cuenta</a>
+        </div>
       </form>
     </div>
   );
