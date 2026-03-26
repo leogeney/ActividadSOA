@@ -1,0 +1,91 @@
+
+body {
+font-family:Arial, Helvetica, sans-serif
+}
+
+h2{
+    font-size: 40px;
+}
+
+div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+
+form {
+    background-color: rgb(54, 54, 54);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+    width: 300px;   
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    
+
+}
+
+
+input {
+    width: 100%;
+    height: 20px;
+    padding: 8px;
+    margin-top: 5px;
+    border-radius: 5px;
+    border: 1px solid #cccccc65;
+}
+
+
+
+a {
+    display: block;
+    margin-top: 15px;
+    text-align: center;
+    text-decoration: none;
+    color: #cf5d00;
+    
+}
+
+a:hover {
+    text-decoration: underline;
+     color: #ffcb3a;
+
+}
+
+.Addtext {
+    
+    font-size: 14px;
+    color: #555;
+
+    gap: 5px;
+   
+
+    display: flex;
+    flex-direction: column;
+   
+}
+
+.title {
+    font-size: 16px;
+    
+    color: #ffffff9d;
+    
+}
+.enviar{
+
+    background-color: #cf5d00;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    height: 40px;
+}
+
+.sign {
+    display: flex;
+    align-items: center;
+}
