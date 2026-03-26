@@ -82,8 +82,7 @@ function HomeHooks() {
             <td>NEW</td>
             <td><a href="/useActionState">Ver</a></td>
         </tr>
-    
-        
+
 
 
         <tr>
@@ -158,6 +157,7 @@ function HomeHooks() {
     </tbody>
 </table>
     </div>
+    
   );
 }
 export default HomeHooks;

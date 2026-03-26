@@ -15,7 +15,14 @@ import UseSyncExternalStore from "./playground/UseSyncExternalStoreExample";
 import UseIdExample from "./playground/UseIdExample";
 import UseLayoutEffect from "./playground/UseLayoutEffectExample";
 import UseInsertionEffect from "./playground/UseInsertionEffectExample";
-
+import UseDeferredValue from "./playground/UseDeferredValue";     
+import UseDebugValue from "./playground/UseDebugValue";
+import Use from "./playground/Use";
+import UseFormStatus from "./playground/UseFormStatus";    
+import UseActionStateExample from "./playground/UseActionStateExample";       
+import UseActionStateEjemplo from "./playground/UseActionStateExample";    
+import UseOptimisticExample from './playground/UseOptimisticExample';  
+import UseCallbalckExample from './playground/UseCallbalckExample';             
 function App() {
   return (
     <BrowserRouter>
@@ -33,7 +40,14 @@ function App() {
         <Route path="/useId" element={<UseIdExample />} />
         <Route path="/useLayoutEffect" element={<UseLayoutEffect />} />
         <Route path="/useInsertionEffect" element={<UseInsertionEffect />} />
-
+        <Route path="/useDeferredValue" element={<UseDeferredValue />} />
+        <Route path="/useDebugValue" element={<UseDebugValue />} />           
+        <Route path="/use" element={<Use />} />     
+        <Route path="/useFormStatus" element={<UseFormStatus />} />        
+        <Route path="/useActionState" element={<UseActionStateExample />} /> 
+        <Route path="/useActionStateEjemplo" element={<UseActionStateEjemplo />} /> 
+        <Route path="/useOptimistic" element={<UseOptimisticExample />} />    
+        <Route path="/useCallback" element={<UseCallbalckExample />} />
       </Routes>
     </BrowserRouter>
   );
