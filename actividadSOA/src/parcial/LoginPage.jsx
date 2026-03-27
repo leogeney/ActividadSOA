@@ -36,7 +36,7 @@ function LoginPage() {
  {error && <p style={{ color: "red" }}>{error}</p>}
       <form onSubmit={handleSubmit}>
         <div>
-          <label>Email</label>
+          <label>Correo electronico</label>
           <input
             type="text"
             placeholder="Email"
@@ -46,7 +46,7 @@ function LoginPage() {
         </div>
 
         <div>
-          <label>Password</label>
+          <label>Contraseña</label>
           <input
             type="password"
             placeholder="Password"
@@ -57,13 +57,13 @@ function LoginPage() {
 
        
 
-        <input type="submit" value="Login"  className="login"/>
+        <input type="submit" value="Iniciar sesión"  className="login"/>
 
       
         <div className="links">
-            <a href="/register">Register</a>
-            <a href="/cambiarcontraseña">Cambiar contraseña</a>
-            <a href="/recuperarcuenta">Recuperar cuenta</a>
+            <a href="/register">Registrarse</a>
+            <a href="/Reset">Cambiar contraseña</a>
+            <a href="/forgot">Recuperar cuenta</a>
         </div>
       </form>
     </div>

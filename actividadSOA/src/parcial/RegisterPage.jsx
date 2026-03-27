@@ -64,7 +64,7 @@ function RegisterPage() {
       
       <form onSubmit={handleSubmit}>
         <div className="Addtext">
-          <label className="title">Email address</label>
+          <label className="title">Correo Electronico</label>
           <input 
             type="text" 
             placeholder="example@gmail.com"
@@ -74,7 +74,7 @@ function RegisterPage() {
         </div>
 
         <div className="Addtext">
-          <label className="title">Username</label>
+          <label className="title">Nombre de Usuario</label>
           <input 
             type="text" 
             placeholder="Username"
@@ -84,7 +84,7 @@ function RegisterPage() {
         </div>
 
         <div className="Addtext">
-          <label className="title">Password</label>
+          <label className="title">Contraseña</label>
           <input 
             type="password" 
             placeholder="Contraseña (mínimo 6 caracteres)"
@@ -93,10 +93,10 @@ function RegisterPage() {
           />
         </div>
 
-        <input type="submit" value="Create Account" className="enviar"/>
+        <input type="submit" value="Crear cuenta" className="enviar"/>
        
         <div className="links">
-          <a href="/">Already have an account? Login</a>
+          <a href="/">¿Ya tienes una cuenta? Inicia sesión</a>
         </div>
       </form>
     </div>
