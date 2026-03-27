@@ -57,3 +57,7 @@ ActividadSOA/
 2	RegisterPage	Leonardo Geney	/register
 3	ForgotPage	Yhoryi Carrascal	/forgot
 4	ResetPage	Yhoryi Carrascal	/reset
+
+
+https://ufpso-team-mor3rm8z.atlassian.net/jira/software/projects/PROYEC/boards/103 -- jira
+
