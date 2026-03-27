@@ -3,6 +3,13 @@ function HomeHooks() {
     <div>
       <p className='TittleHome'>Home Hooks</p>
 
+      <div className='links'>
+        <a href="">LoginPage</a>
+        <a href="">RegisterPage</a>
+        <a href="">ForgotPage</a>
+        <a href="">ResetPage</a>   
+      </div>
+
       <table>
     <thead>
         <tr>
@@ -75,6 +82,7 @@ function HomeHooks() {
             <td>NEW</td>
             <td><a href="/useActionState">Ver</a></td>
         </tr>
+
 
 
         <tr>
