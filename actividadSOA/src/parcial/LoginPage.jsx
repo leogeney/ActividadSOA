@@ -1,52 +1,84 @@
 import { useState } from "react";
-
+import { auth, googleProvider } from "./Firebase";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  // LOGIN NORMAL
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    
     if (!email || !password) {
       setError("Todos los campos son obligatorios");
       return;
     }
 
-    if (!email.includes("@")) {
-      setError("Email inválido");
-      return;
+    try {
+      setLoading(true);
+
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      console.log("Usuario:", userCredential.user);
+      setError("");
+      alert("Login exitoso");
+
+    } catch (err) {
+      setError("Correo o contraseña incorrectos");
     }
 
-    if (password.length < 6) {
-      setError("La contraseña debe tener mínimo 6 caracteres");
-      return;
+    setLoading(false);
+  };
+
+  // LOGIN CON GOOGLE
+  const handleGoogleLogin = async () => {
+    if (loading) return; // evita doble clic
+
+    try {
+      setLoading(true);
+
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("Google:", result.user);
+
+      setError("");
+      alert("Login con Google exitoso");
+
+    } catch (err) {
+      // ❌ IGNORA ESTE ERROR ESPECÍFICO
+      if (err.code !== "auth/cancelled-popup-request") {
+        setError("Error con Google");
+      }
     }
 
-    setError("");
-    alert("Datos correctos: " + email + " - " + password);
+    setLoading(false);
   };
 
   return (
-    <div>
-      <h2>Login</h2>
- {error && <p style={{ color: "red" }}>{error}</p>}
+    <div className="container">
       <form onSubmit={handleSubmit}>
+        <h2>Login</h2>
+
+        {error && <p>{error}</p>}
+
         <div>
-          <label>Email</label>
+          <label>Correo electrónico</label>
           <input
-            type="text"
+            type="email"
             placeholder="Email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)} required
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
         <div>
-          <label>Password</label>
+          <label>Contraseña</label>
           <input
             type="password"
             placeholder="Password"
@@ -55,15 +87,26 @@ function LoginPage() {
           />
         </div>
 
-       
+        <input
+          type="submit"
+          value={loading ? "Cargando..." : "Iniciar sesión"}
+          disabled={loading}
+        />
 
-        <input type="submit" value="Login"  className="login"/>
+        {/* BOTÓN GOOGLE */}
+        <button
+          type="button"
+          className="google"
+          onClick={handleGoogleLogin}
+          disabled={loading}
+        >
+          {loading ? "Cargando..." : "Iniciar sesión con Google"}
+        </button>
 
-      
         <div className="links">
-            <a href="/register">Register</a>
-            <a href="/cambiarcontraseña">Cambiar contraseña</a>
-            <a href="/recuperarcuenta">Recuperar cuenta</a>
+          <a href="/register">Registrarse</a>
+          <a href="/Reset">Cambiar contraseña</a>
+          <a href="/forgot">Recuperar cuenta</a>
         </div>
       </form>
     </div>
