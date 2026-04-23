@@ -86,6 +86,6 @@ El seguimiento del desarrollo y la asignación de tareas se realizó mediante **
 
 <div align="center">
 
-Made with ❤️ · Parcial I SOA · 2024
+
 
 </div>
