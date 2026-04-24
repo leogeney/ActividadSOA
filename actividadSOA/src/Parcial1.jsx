@@ -5,7 +5,8 @@ import RegisterPage from "./parcial/RegisterPage";
 import './login.css'
 import './register.css'
 import ForgotPage from "./parcial/ForgotPage";
-import ResetPage from "./parcial/ResetPage"; 
+import ResetPage from "./parcial/ResetPage";
+import Welcome from "./parcial/Welcome"; 
     
 
 
@@ -18,8 +19,7 @@ function Parcial1() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot" element={<ForgotPage />} />
         <Route path="/reset" element={<ResetPage />} />
-
-       
+        <Route path="/Welcome" element={<Welcome />} />
       </Routes>
     </BrowserRouter>
   );

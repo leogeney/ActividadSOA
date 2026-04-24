@@ -11,106 +11,111 @@ function ResetPage() {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
 
-
   const handleEmailSubmit = (e) => {
     e.preventDefault();
 
-    if (!email) {
-      setError("El email es obligatorio");
-      return;
-    }
-
-    if (!email.includes("@")) {
-      setError("Email inválido");
-      return;
-    }
+    if (!email) return setError("El email es obligatorio");
+    if (!email.includes("@")) return setError("Email inválido");
 
     setError("");
     setStep(2);
   };
 
-  // 🔵 PASO 2: VALIDAR CONTRASEÑA
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
 
-    if (!password || !confirmPassword) {
-      setError("Todos los campos son obligatorios");
-      return;
-    }
+    if (!password || !confirmPassword)
+      return setError("Todos los campos son obligatorios");
 
-    if (password.length < 6) {
-      setError("Mínimo 6 caracteres");
-      return;
-    }
+    if (password.length < 6)
+      return setError("Mínimo 6 caracteres");
 
-    if (!/\d/.test(password)) {
-      setError("Debe contener al menos un número");
-      return;
-    }
+    if (!/\d/.test(password))
+      return setError("Debe contener al menos un número");
 
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden");
-      return;
-    }
+    if (password !== confirmPassword)
+      return setError("Las contraseñas no coinciden");
 
     setError("");
     setShowModal(true);
   };
 
   return (
-    <div className="container">
-      <div>
-        <h2>Cambiar Contraseña</h2>
+    <div className="reset-container">
+      <form className="reset-form">
+        <h2 className="reset-title">Cambiar Contraseña</h2>
 
-        {error && <p>{error}</p>}
+        {error && <div className="reset-error">{error}</div>}
 
+        {/* STEP 1 */}
         {step === 1 && (
-          <form onSubmit={handleEmailSubmit}>
-            <input
-              type="email"
-              placeholder="Ingresa tu email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+          <>
+            <div className="reset-field">
+              <label>Correo</label>
+              <input
+                type="email"
+                placeholder="Ingresa tu email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError("");
+                }}
+              />
+            </div>
 
-            <button type="submit">Continuar</button>
+            <button className="reset-btn" onClick={handleEmailSubmit}>
+              Continuar
+            </button>
 
-            <div className="links">
+            <div className="reset-links">
               <Link to="/">Volver al inicio de sesión</Link>
             </div>
-          </form>
+          </>
         )}
 
-  
+        {/* STEP 2 */}
         {step === 2 && (
-          <form onSubmit={handlePasswordSubmit}>
-            <input
-              type="password"
-              placeholder="Nueva contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+          <>
+            <div className="reset-field">
+              <label>Nueva contraseña</label>
+              <input
+                type="password"
+                placeholder="Nueva contraseña"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError("");
+                }}
+              />
+            </div>
 
-            <input
-              type="password"
-              placeholder="Confirmar contraseña"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
+            <div className="reset-field">
+              <label>Confirmar contraseña</label>
+              <input
+                type="password"
+                placeholder="Confirmar contraseña"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setError("");
+                }}
+              />
+            </div>
 
-            <button type="submit">Cambiar contraseña</button>
-          </form>
+            <button className="reset-btn" onClick={handlePasswordSubmit}>
+              Cambiar contraseña
+            </button>
+          </>
         )}
-      </div>
+      </form>
 
       {showModal && (
-        <div className="modal">
-          <div className="modal-content">
+        <div className="reset-modal">
+          <div className="reset-modal-content">
             <h3>¡Contraseña actualizada!</h3>
-            <p>La contraseña del correo {email} fue cambiada correctamente</p>
+            <p>La contraseña de {email} fue cambiada</p>
 
-            <Link to="/">Ir al inicio de sesión</Link>
-            <br />
+            <Link to="/">Ir al inicio</Link>
             <button onClick={() => setShowModal(false)}>Cerrar</button>
           </div>
         </div>
