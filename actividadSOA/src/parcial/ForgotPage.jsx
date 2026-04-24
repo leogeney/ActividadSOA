@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
+
 function ForgotPage() {
   const [step, setStep] = useState(1);
 
@@ -18,13 +19,11 @@ function ForgotPage() {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  // 🔥 GENERAR CÓDIGO
   const generarCodigo = () => {
     const newCode = Math.floor(100000 + Math.random() * 900000).toString();
     setRealCode(newCode);
     alert("Código enviado (simulación): " + newCode);
   };
-
 
   const handleEmailSubmit = (e) => {
     e.preventDefault();
@@ -57,7 +56,7 @@ function ForgotPage() {
         setCodeError("Código incorrecto");
       } else {
         setCodeError("");
-        setStep(3); // 🔥 pasa automáticamente
+        setStep(3);
       }
     }
   };
@@ -91,78 +90,93 @@ function ForgotPage() {
 
   return (
     <div className="container">
-      <div>
+      <form>
         <h2>Recuperar Cuenta</h2>
 
-        {error && <p>{error}</p>}
+        {error && <div className="error">{error}</div>}
 
+        {/* STEP 1 */}
         {step === 1 && (
-          <form onSubmit={handleEmailSubmit}>
-            <input
-              type="email"
-              placeholder="Ingresa tu email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+          <>
+            <div className="field">
+              <label>Correo electrónico</label>
+              <input
+                type="email"
+                placeholder="Ingresa tu email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
 
-            {loading ? (
-              <p>Enviando código...</p>
-            ) : (
-              <button type="submit">Enviar código</button>
-            )}
+            <button onClick={handleEmailSubmit} type="submit">
+              {loading ? "Enviando..." : "Enviar código"}
+            </button>
 
             <div className="links">
-              <Link to="/">Volver al inicio de sesion</Link>
+              <Link to="/">Volver al inicio de sesión</Link>
             </div>
-          </form>
+          </>
         )}
 
+        {/* STEP 2 */}
         {step === 2 && (
-          <div>
-            <p>Código enviado a: <b>{email}</b></p>
+          <>
+            <p style={{ color: "#fff", marginBottom: "10px" }}>
+              Código enviado a <b>{email}</b>
+            </p>
 
-            <input
-              type="text"
-              placeholder="Ingresa el código"
-              value={code}
-              onChange={(e) => handleCodeChange(e.target.value)}
-            />
+            <div className="field">
+              <label>Código de verificación</label>
+              <input
+                type="text"
+                placeholder="123456"
+                value={code}
+                onChange={(e) => handleCodeChange(e.target.value)}
+              />
+            </div>
 
-            {codeError && <p>{codeError}</p>}
-          </div>
+            {codeError && <div className="error">{codeError}</div>}
+          </>
         )}
 
-      
+        {/* STEP 3 */}
         {step === 3 && (
-          <form onSubmit={handlePasswordSubmit}>
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Nueva contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+          <>
+            <div className="field">
+              <label>Nueva contraseña</label>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Nueva contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
 
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Confirmar contraseña"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
+            <div className="field">
+              <label>Confirmar contraseña</label>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Confirmar contraseña"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
 
-            <button type="submit">Cambiar contraseña</button>
-          </form>
+            <button type="submit" onClick={handlePasswordSubmit}>
+              Cambiar contraseña
+            </button>
+          </>
         )}
-      </div>
+      </form>
 
-     
+      {/* MODAL */}
       {showModal && (
         <div className="modal">
           <div className="modal-content">
             <h3>¡Éxito!</h3>
-            <p>La contraseña del correo {email} fue actualizada</p>
+            <p>La contraseña de {email} fue actualizada</p>
 
-            <Link to="/">Ir al inicio de sesion</Link>
-            <br />
+            <Link to="/">Ir al inicio de sesión</Link>
             <button onClick={() => setShowModal(false)}>Cerrar</button>
           </div>
         </div>
