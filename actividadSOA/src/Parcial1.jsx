@@ -2,8 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import LoginPage from "./parcial/LoginPage";
 import RegisterPage from "./parcial/RegisterPage";
-import './login.css'
-import './register.css'
+
 import ForgotPage from "./parcial/ForgotPage";
 import ResetPage from "./parcial/ResetPage";
 import Welcome from "./parcial/Welcome"; 
