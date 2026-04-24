@@ -1,4 +1,8 @@
 import './App.css'
+import './parcial/css/login.css'
+import './parcial/css/forgot.css'
+import './parcial/css/reset.css'
+import './parcial/css/register.css'
 
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -22,7 +26,11 @@ import UseFormStatus from "./playground/UseFormStatus";
 import UseActionStateExample from "./playground/UseActionStateExample";       
 import UseActionStateEjemplo from "./playground/UseActionStateExample";    
 import UseOptimisticExample from './playground/UseOptimisticExample';  
-import UseCallbalckExample from './playground/UseCallbalckExample';             
+import UseCallbalckExample from './playground/UseCallbalckExample';  
+import Dashboard from "./parcial/Dashboard";   
+import WelcomePage from "./parcial/Welcome";
+
+
 function App() {
   return (
     <BrowserRouter>
@@ -48,6 +56,8 @@ function App() {
         <Route path="/useActionStateEjemplo" element={<UseActionStateEjemplo />} /> 
         <Route path="/useOptimistic" element={<UseOptimisticExample />} />    
         <Route path="/useCallback" element={<UseCallbalckExample />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/welcome" element={<WelcomePage/>} />        
       </Routes>
     </BrowserRouter>
   );
