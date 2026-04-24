@@ -1,4 +1,8 @@
 import './App.css'
+import './parcial/css/login.css'
+import './parcial/css/forgot.css'
+import './parcial/css/reset.css'
+import './parcial/css/register.css'
 
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
