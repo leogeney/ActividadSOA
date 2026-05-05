@@ -4,7 +4,7 @@ import { auth } from "./Firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
 
 function ForgotPage() {
-  const [step, setStep] = useState(1); // 1: email, 2: éxito
+  const [step, setStep] = useState(1); 
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
