@@ -1,38 +1,21 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-
+import { auth } from "./Firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
 
 function ForgotPage() {
-  const [step, setStep] = useState(1);
-
+  const [step, setStep] = useState(1); 
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [realCode, setRealCode] = useState("");
-
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  const [showPassword, setShowPassword] = useState(false);
-
   const [error, setError] = useState("");
-  const [codeError, setCodeError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
 
-  const generarCodigo = () => {
-    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setRealCode(newCode);
-    alert("Código enviado (simulación): " + newCode);
-  };
-
-  const handleEmailSubmit = (e) => {
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
 
     if (!email) {
       setError("El email es obligatorio");
       return;
     }
-
     if (!email.includes("@")) {
       setError("Email inválido");
       return;
@@ -41,61 +24,37 @@ function ForgotPage() {
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      generarCodigo();
-      setLoading(false);
-      setStep(2);
-    }, 1500);
-  };
-
-  const handleCodeChange = (value) => {
-    setCode(value);
-
-    if (value.length === 6) {
-      if (value !== realCode) {
-        setCodeError("Código incorrecto");
-      } else {
-        setCodeError("");
-        setStep(3);
+    try {
+      // 🔥 Firebase envía el correo de recuperación real
+      await sendPasswordResetEmail(auth, email);
+      setStep(2); // Mostrar pantalla de éxito
+    } catch (err) {
+      switch (err.code) {
+        case "auth/user-not-found":
+          setError("No existe una cuenta con ese correo");
+          break;
+        case "auth/invalid-email":
+          setError("El correo no es válido");
+          break;
+        case "auth/too-many-requests":
+          setError("Demasiados intentos. Espera un momento");
+          break;
+        default:
+          setError("Error al enviar el correo: " + err.message);
       }
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault();
-
-    if (!password || !confirmPassword) {
-      setError("Todos los campos son obligatorios");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Mínimo 6 caracteres");
-      return;
-    }
-
-    if (!/\d/.test(password)) {
-      setError("Debe contener al menos un número");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden");
-      return;
-    }
-
-    setError("");
-    setShowModal(true);
   };
 
   return (
     <div className="container">
-      <form>
+      <form onSubmit={handleEmailSubmit}>
         <h2>Recuperar Cuenta</h2>
 
         {error && <div className="error">{error}</div>}
 
-        {/* STEP 1 */}
+        {/* STEP 1 — Ingresar email */}
         {step === 1 && (
           <>
             <div className="field">
@@ -104,12 +63,15 @@ function ForgotPage() {
                 type="email"
                 placeholder="Ingresa tu email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError("");
+                }}
               />
             </div>
 
-            <button onClick={handleEmailSubmit} type="submit">
-              {loading ? "Enviando..." : "Enviar código"}
+            <button type="submit" disabled={loading}>
+              {loading ? "Enviando..." : "Enviar correo de recuperación"}
             </button>
 
             <div className="links">
@@ -118,69 +80,39 @@ function ForgotPage() {
           </>
         )}
 
-        {/* STEP 2 */}
+        {/* STEP 2 — Correo enviado */}
         {step === 2 && (
           <>
-            <p style={{ color: "#fff", marginBottom: "10px" }}>
-              Código enviado a <b>{email}</b>
-            </p>
-
-            <div className="field">
-              <label>Código de verificación</label>
-              <input
-                type="text"
-                placeholder="123456"
-                value={code}
-                onChange={(e) => handleCodeChange(e.target.value)}
-              />
+            <div style={{
+              background: "rgba(34,197,94,0.15)",
+              border: "1px solid rgba(34,197,94,0.4)",
+              borderRadius: "10px",
+              padding: "16px",
+              textAlign: "center",
+              color: "#86efac",
+              marginBottom: "16px"
+            }}>
+              <p style={{ fontSize: "32px", marginBottom: "8px" }}>📬</p>
+              <p><strong>¡Correo enviado!</strong></p>
+              <p style={{ fontSize: "13px", marginTop: "6px" }}>
+                Revisa tu bandeja de entrada en <strong>{email}</strong> y sigue el enlace para restablecer tu contraseña.
+              </p>
             </div>
 
-            {codeError && <div className="error">{codeError}</div>}
-          </>
-        )}
-
-        {/* STEP 3 */}
-        {step === 3 && (
-          <>
-            <div className="field">
-              <label>Nueva contraseña</label>
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Nueva contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="field">
-              <label>Confirmar contraseña</label>
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Confirmar contraseña"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-
-            <button type="submit" onClick={handlePasswordSubmit}>
-              Cambiar contraseña
+            <button
+              type="button"
+              onClick={() => { setStep(1); setEmail(""); }}
+              style={{ background: "rgba(255,255,255,0.1)", color: "white" }}
+            >
+              Enviar a otro correo
             </button>
+
+            <div className="links">
+              <Link to="/">Volver al inicio de sesión</Link>
+            </div>
           </>
         )}
       </form>
-
-      {/* MODAL */}
-      {showModal && (
-        <div className="modal">
-          <div className="modal-content">
-            <h3>¡Éxito!</h3>
-            <p>La contraseña de {email} fue actualizada</p>
-
-            <Link to="/">Ir al inicio de sesión</Link>
-            <button onClick={() => setShowModal(false)}>Cerrar</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
