@@ -1,22 +1,45 @@
 import { useState } from "react";
-import { auth, googleProvider, githubProvider, facebookProvider } from "./Firebase";
-import { 
-  signInWithEmailAndPassword, 
-  signInWithPopup 
+import { auth, db, googleProvider, githubProvider, facebookProvider } from "./Firebase";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup
 } from "firebase/auth";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+
+// ─── Helper: crea el doc en Firestore solo si no existe aún ─────────────────
+async function ensureUserDoc(user) {
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    const nameParts = (user.displayName || "").split(" ");
+    const nombre   = nameParts[0] || "";
+    const apellido = nameParts.slice(1).join(" ") || "";
+
+    await setDoc(ref, {
+      uid:           user.uid,
+      email:         user.email || "",
+      username:      user.displayName || user.email?.split("@")[0] || "usuario",
+      nombre:        nombre,
+      apellido:      apellido,
+      role:          "user",
+      activo:        true,
+      tiempoInicial: serverTimestamp(),
+      salida:        null,
+      createdAt:     serverTimestamp(),
+    });
+  }
+}
 
 function LoginPage() {
   const navigate = useNavigate();
-
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
+  const [form, setForm]     = useState({ email: "", password: "" });
+  const [error, setError]   = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  // ─── Email / contraseña ──────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.email || !form.password) {
@@ -26,11 +49,9 @@ function LoginPage() {
     try {
       setLoading(true);
       setError("");
-      const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
-      console.log("Usuario:", userCredential.user);
+      await signInWithEmailAndPassword(auth, form.email, form.password);
       navigate("/Welcome", { replace: true });
     } catch (err) {
-      console.error(err.code);
       switch (err.code) {
         case "auth/user-not-found":
         case "auth/invalid-credential":
@@ -50,13 +71,14 @@ function LoginPage() {
     }
   };
 
+  // ─── Google ──────────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
     if (loading) return;
     try {
       setLoading(true);
       setError("");
       const result = await signInWithPopup(auth, googleProvider);
-      console.log("Google:", result.user);
+      await ensureUserDoc(result.user);          // ← crea doc si no existe
       navigate("/Welcome", { replace: true });
     } catch (err) {
       if (err.code !== "auth/cancelled-popup-request") {
@@ -67,38 +89,39 @@ function LoginPage() {
     }
   };
 
+  // ─── GitHub ──────────────────────────────────────────────────────────────
   const handleGithubLogin = async () => {
-  if (loading) return;
-  try {
-    setLoading(true);
-    setError("");
-    const result = await signInWithPopup(auth, githubProvider);
-    console.log("GitHub:", result.user);
-    navigate("/welcome", { replace: true });
-  } catch (err) {
-    console.error(err);
-    switch (err.code) {
-      case "auth/account-exists-with-different-credential":
-        setError("Ya existe una cuenta con este correo. Inicia sesión con Google o Facebook.");
-        break;
-      case "auth/cancelled-popup-request":
-        break;
-      default:
-        setError("Error con GitHub");
+    if (loading) return;
+    try {
+      setLoading(true);
+      setError("");
+      const result = await signInWithPopup(auth, githubProvider);
+      await ensureUserDoc(result.user);          // ← crea doc si no existe
+      navigate("/Welcome", { replace: true });   // ← ruta unificada
+    } catch (err) {
+      switch (err.code) {
+        case "auth/account-exists-with-different-credential":
+          setError("Ya existe una cuenta con este correo. Inicia sesión con Google o Facebook.");
+          break;
+        case "auth/cancelled-popup-request":
+          break;
+        default:
+          setError("Error con GitHub");
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
+  // ─── Facebook ─────────────────────────────────────────────────────────────
   const handleFacebookLogin = async () => {
     if (loading) return;
     try {
       setLoading(true);
       setError("");
       const result = await signInWithPopup(auth, facebookProvider);
-      console.log("Facebook:", result.user);
-      navigate("/welcome", { replace: true });
+      await ensureUserDoc(result.user);          // ← crea doc si no existe
+      navigate("/Welcome", { replace: true });   // ← ruta unificada
     } catch (err) {
       if (err.code !== "auth/cancelled-popup-request") {
         setError("Error con Facebook");
