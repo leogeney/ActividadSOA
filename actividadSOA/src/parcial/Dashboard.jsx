@@ -10,6 +10,7 @@ function Dashboard() {
   const [role, setRole] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -58,6 +59,17 @@ function Dashboard() {
     });
   };
 
+  const filteredUsers = allUsers.filter((u) => {
+    const q = search.toLowerCase();
+    return (
+      (u.nombre || "").toLowerCase().includes(q) ||
+      (u.apellido || "").toLowerCase().includes(q) ||
+      (u.username || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.role || "").toLowerCase().includes(q)
+    );
+  });
+
   if (loading) {
     return (
       <div style={styles.container}>
@@ -79,7 +91,6 @@ function Dashboard() {
 
   return (
     <div style={styles.container}>
-      {/* Background Decor */}
       <div style={styles.blob1}></div>
       <div style={styles.blob2}></div>
 
@@ -89,18 +100,26 @@ function Dashboard() {
           <div>
             <h2 style={styles.title}>
               {role === "admin" ? "Admin Control" : "Mi Espacio"}
-              <span style={{ marginLeft: '10px', fontSize: '20px' }}>
+              <span style={{ marginLeft: "10px", fontSize: "20px" }}>
                 {role === "admin" ? "🛡️" : "👤"}
               </span>
             </h2>
             <p style={styles.subtitle}>{user?.email}</p>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ 
-              ...styles.badge, 
-              background: role === "admin" ? "linear-gradient(135deg, #a855f7, #7e22ce)" : "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-              boxShadow: role === "admin" ? "0 4px 15px rgba(168, 85, 247, 0.4)" : "0 4px 15px rgba(59, 130, 246, 0.4)"
-            }}>
+          <div style={{ textAlign: "right" }}>
+            <span
+              style={{
+                ...styles.badge,
+                background:
+                  role === "admin"
+                    ? "linear-gradient(135deg, #a855f7, #7e22ce)"
+                    : "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                boxShadow:
+                  role === "admin"
+                    ? "0 4px 15px rgba(168, 85, 247, 0.4)"
+                    : "0 4px 15px rgba(59, 130, 246, 0.4)",
+              }}
+            >
               {role === "admin" ? "Administrador" : "Miembro Pro"}
             </span>
           </div>
@@ -113,11 +132,39 @@ function Dashboard() {
           <div style={styles.sectionFadeIn}>
             <div style={styles.sectionHeader}>
               <h3 style={styles.sectionTitle}>Directorio de Usuarios</h3>
-              <span style={styles.countTag}>{allUsers.length} total</span>
+              <span style={styles.countTag}>
+                {filteredUsers.length} / {allUsers.length} total
+              </span>
             </div>
-            
-            {allUsers.length === 0 ? (
-              <p style={styles.empty}>No se encontraron registros en la base de datos.</p>
+
+            {/* Buscador */}
+            <div style={styles.searchWrapper}>
+              <span style={styles.searchIcon}>🔍</span>
+              <input
+                type="text"
+                placeholder="Buscar por nombre, email, rol..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={styles.searchInput}
+                className="search-input"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  style={styles.clearBtn}
+                  title="Limpiar búsqueda"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {filteredUsers.length === 0 ? (
+              <p style={styles.empty}>
+                {search
+                  ? `Sin resultados para "${search}".`
+                  : "No se encontraron registros en la base de datos."}
+              </p>
             ) : (
               <div style={styles.tableWrapper}>
                 <table style={styles.table}>
@@ -131,25 +178,44 @@ function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {allUsers.map((u, i) => (
+                    {filteredUsers.map((u, i) => (
                       <tr key={u.uid || i} className="table-row" style={styles.tr}>
                         <td style={styles.td}>
-                          <div style={{ fontWeight: '600' }}>{u.nombre || u.username || "Sin nombre"}</div>
-                          <div style={{ fontSize: '11px', opacity: 0.6 }}>{u.apellido || ""}</div>
+                          <div style={{ fontWeight: "600" }}>
+                            {u.nombre || u.username || "Sin nombre"}
+                          </div>
+                          <div style={{ fontSize: "11px", opacity: 0.6 }}>
+                            {u.apellido || ""}
+                          </div>
                         </td>
                         <td style={styles.td}>{u.email}</td>
-                        <td style={styles.td}>{formatDate(u.tiempoInicial || u.createdAt)}</td>
                         <td style={styles.td}>
-                          <span style={{
-                            ...styles.statusBadge,
-                            color: u.activo !== false ? "#4ade80" : "#fb7185",
-                            background: u.activo !== false ? "rgba(74, 222, 128, 0.1)" : "rgba(251, 113, 133, 0.1)",
-                          }}>
+                          {formatDate(u.tiempoInicial || u.createdAt)}
+                        </td>
+                        <td style={styles.td}>
+                          <span
+                            style={{
+                              ...styles.statusBadge,
+                              color:
+                                u.activo !== false ? "#4ade80" : "#fb7185",
+                              background:
+                                u.activo !== false
+                                  ? "rgba(74, 222, 128, 0.1)"
+                                  : "rgba(251, 113, 133, 0.1)",
+                            }}
+                          >
                             {u.activo !== false ? "● Activo" : "○ Inactivo"}
                           </span>
                         </td>
                         <td style={styles.td}>
-                           <span style={{ ...styles.miniBadge, border: `1px solid ${u.role === 'admin' ? '#a855f7' : '#3b82f6'}` }}>
+                          <span
+                            style={{
+                              ...styles.miniBadge,
+                              border: `1px solid ${
+                                u.role === "admin" ? "#a855f7" : "#3b82f6"
+                              }`,
+                            }}
+                          >
                             {u.role || "user"}
                           </span>
                         </td>
@@ -168,38 +234,68 @@ function Dashboard() {
             <h3 style={styles.sectionTitle}>Detalles de Perfil</h3>
             <div style={styles.infoBox}>
               <div style={styles.infoGrid}>
-                <InfoItem label="Nombre Completo" value={`${userData?.nombre || user?.displayName || "—"} ${userData?.apellido || ""}`} />
-                <InfoItem label="ID de Usuario" value={userData?.username || "No asignado"} />
+                <InfoItem
+                  label="Nombre Completo"
+                  value={`${userData?.nombre || user?.displayName || "—"} ${
+                    userData?.apellido || ""
+                  }`}
+                />
+                <InfoItem
+                  label="ID de Usuario"
+                  value={userData?.username || "No asignado"}
+                />
                 <InfoItem label="Correo Electrónico" value={user?.email} />
-                <InfoItem label="Fecha de Alta" value={formatDate(userData?.tiempoInicial || userData?.createdAt)} />
-                <InfoItem label="Última Salida" value={formatDate(userData?.salida)} />
-                <InfoItem label="Estado de Cuenta" value={
-                  <span style={{ color: userData?.activo !== false ? "#4ade80" : "#fb7185", fontWeight: '600' }}>
-                    {userData?.activo !== false ? "Verificada" : "Inactiva"}
-                  </span>
-                } />
+                <InfoItem
+                  label="Fecha de Alta"
+                  value={formatDate(
+                    userData?.tiempoInicial || userData?.createdAt
+                  )}
+                />
+                <InfoItem
+                  label="Última Salida"
+                  value={formatDate(userData?.salida)}
+                />
+                <InfoItem
+                  label="Estado de Cuenta"
+                  value={
+                    <span
+                      style={{
+                        color:
+                          userData?.activo !== false ? "#4ade80" : "#fb7185",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {userData?.activo !== false ? "Verificada" : "Inactiva"}
+                    </span>
+                  }
+                />
               </div>
             </div>
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '30px' }}>
-          <button onClick={handleLogout} style={styles.buttonLogout} className="btn-hover">
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "30px" }}>
+          <button
+            onClick={handleLogout}
+            style={styles.buttonLogout}
+            className="btn-hover"
+          >
             Finalizar Sesión
           </button>
         </div>
       </div>
 
-      {/* Global CSS for animations & hovers */}
       <style>{`
         .table-row { transition: background 0.2s ease; }
         .table-row:hover { background: rgba(255,255,255,0.03); }
         .btn-hover { transition: all 0.3s ease; }
-        .btn-hover:hover { 
+        .btn-hover:hover {
           transform: translateY(-2px);
           box-shadow: 0 5px 15px rgba(168, 85, 247, 0.4);
           filter: brightness(1.1);
         }
+        .search-input::placeholder { color: #475569; }
+        .search-input:focus { outline: none; border-color: rgba(168, 85, 247, 0.5) !important; box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1); }
       `}</style>
     </div>
   );
@@ -225,29 +321,29 @@ const styles = {
     color: "#e2e8f0",
     padding: "20px",
     fontFamily: "'Inter', system-ui, sans-serif",
-    position: 'relative',
-    overflow: 'hidden',
+    position: "relative",
+    overflow: "hidden",
   },
   blob1: {
-    position: 'absolute',
-    width: '300px',
-    height: '300px',
-    background: '#7e22ce',
-    filter: 'blur(100px)',
-    opacity: '0.15',
-    top: '10%',
-    left: '10%',
+    position: "absolute",
+    width: "300px",
+    height: "300px",
+    background: "#7e22ce",
+    filter: "blur(100px)",
+    opacity: "0.15",
+    top: "10%",
+    left: "10%",
     zIndex: 0,
   },
   blob2: {
-    position: 'absolute',
-    width: '300px',
-    height: '300px',
-    background: '#3b82f6',
-    filter: 'blur(100px)',
-    opacity: '0.15',
-    bottom: '10%',
-    right: '10%',
+    position: "absolute",
+    width: "300px",
+    height: "300px",
+    background: "#3b82f6",
+    filter: "blur(100px)",
+    opacity: "0.15",
+    bottom: "10%",
+    right: "10%",
     zIndex: 0,
   },
   card: {
@@ -313,6 +409,41 @@ const styles = {
     padding: "4px 10px",
     borderRadius: "8px",
     color: "#94a3b8",
+  },
+  searchWrapper: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    marginBottom: "20px",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: "14px",
+    fontSize: "14px",
+    pointerEvents: "none",
+    zIndex: 1,
+  },
+  searchInput: {
+    width: "100%",
+    padding: "12px 40px 12px 40px",
+    background: "rgba(0,0,0,0.3)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "12px",
+    color: "#f1f5f9",
+    fontSize: "14px",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+    boxSizing: "border-box",
+  },
+  clearBtn: {
+    position: "absolute",
+    right: "12px",
+    background: "none",
+    border: "none",
+    color: "#64748b",
+    cursor: "pointer",
+    fontSize: "13px",
+    padding: "4px",
+    lineHeight: 1,
   },
   tableWrapper: {
     overflowX: "auto",
@@ -391,6 +522,12 @@ const styles = {
   },
   sectionFadeIn: {
     animation: "fadeIn 0.5s ease-out forwards",
+  },
+  empty: {
+    color: "#64748b",
+    textAlign: "center",
+    padding: "40px 0",
+    fontSize: "14px",
   },
 };
 

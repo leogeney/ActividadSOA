@@ -5,7 +5,7 @@ import {
   signInWithPopup,
   linkWithCredential,
   GithubAuthProvider,
-  signOut
+  signOut, FacebookAuthProvider
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
