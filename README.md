@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📋 Parcial I — Arquitectura Orientada a Servicios (SOA)
+# 📋 Parcial II — Arquitectura Orientada a Servicios (SOA)
 
 ![JavaScript](https://img.shields.io/badge/JavaScript-87.8%25-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![CSS](https://img.shields.io/badge/CSS-11.4%25-1572B6?style=for-the-badge&logo=css3&logoColor=white)
@@ -62,6 +62,8 @@ npm run dev
 |:---:|:---|:---|:---:|
 | 1 | `LoginPage` | Leonardo Geney | `/` |
 | 2 | `RegisterPage` | Leonardo Geney | `/register` |
+| 2 | `Dashboard` | Leonardo Geney | `/Dashboard` |
+| 2 | `Welcome` | Leonardo Geney | `/Welcome` |
 | 3 | `ForgotPage` | Yhoryi Carrascal | `/forgot` |
 | 4 | `ResetPage` | Yhoryi Carrascal | `/reset` |
 
@@ -73,6 +75,9 @@ npm run dev
 - ✅ Inicio de sesión
 - ✅ Recuperación de contraseña
 - ✅ Restablecimiento de contraseña
+- Vista de usuarios (admin)
+- VIsta welcome
+- Vista para users 
 
 ---
 
