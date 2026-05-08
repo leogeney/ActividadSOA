@@ -1,120 +1,124 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { auth } from "./Firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
 
 function ResetPage() {
-  const [step, setStep] = useState(1);
-
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
   const [error, setError] = useState("");
-  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-
-  const handleEmailSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!email) {
-      setError("El email es obligatorio");
+    if (!email.trim()) {
+      setError("El correo es obligatorio");
       return;
     }
 
     if (!email.includes("@")) {
-      setError("Email inválido");
+      setError("Correo inválido");
       return;
     }
 
-    setError("");
-    setStep(2);
-  };
+    try {
+      setLoading(true);
+      setError("");
 
-  // 🔵 PASO 2: VALIDAR CONTRASEÑA
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault();
+     const actionCodeSettings = {
+  url: "http://localhost:5173/reset-password",
+  handleCodeInApp: true
+};
 
-    if (!password || !confirmPassword) {
-      setError("Todos los campos son obligatorios");
-      return;
+await sendPasswordResetEmail(
+  auth,
+  email,
+  actionCodeSettings
+);
+
+      setSuccess(true);
+
+    } catch (err) {
+      switch (err.code) {
+        case "auth/user-not-found":
+          setError("No existe una cuenta con ese correo");
+          break;
+        case "auth/invalid-email":
+          setError("Correo inválido");
+          break;
+        case "auth/too-many-requests":
+          setError("Demasiados intentos. Intenta más tarde");
+          break;
+        default:
+          setError("Error al enviar correo");
+      }
+    } finally {
+      setLoading(false);
     }
-
-    if (password.length < 6) {
-      setError("Mínimo 6 caracteres");
-      return;
-    }
-
-    if (!/\d/.test(password)) {
-      setError("Debe contener al menos un número");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden");
-      return;
-    }
-
-    setError("");
-    setShowModal(true);
   };
 
   return (
-    <div className="container">
-      <div>
-        <h2>Cambiar Contraseña</h2>
+    <div className="reset-container">
+      <form className="reset-form" onSubmit={handleSubmit}>
+        <h2 className="reset-title">¿Olvidaste tu contraseña?</h2>
 
-        {error && <p>{error}</p>}
+        {!success ? (
+          <>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.7)",
+                fontSize: "14px",
+                textAlign: "center",
+                marginBottom: "20px"
+              }}
+            >
+              Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña
+            </p>
 
-        {step === 1 && (
-          <form onSubmit={handleEmailSubmit}>
-            <input
-              type="email"
-              placeholder="Ingresa tu email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            {error && <div className="reset-error">{error}</div>}
 
-            <button type="submit">Continuar</button>
-
-            <div className="links">
-              <Link to="/">Volver al inicio de sesión</Link>
+            <div className="reset-field">
+              <label>Correo electrónico</label>
+              <input
+                type="email"
+                placeholder="correo@ejemplo.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError("");
+                }}
+              />
             </div>
-          </form>
+
+            <button
+              className="reset-btn"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Enviando..." : "Enviar enlace"}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="reset-modal-content">
+              <p style={{ fontSize: "40px" }}>📬</p>
+
+              <h3>Correo enviado</h3>
+
+              <p>
+                Hemos enviado un enlace de recuperación a:
+              </p>
+
+              <strong>{email}</strong>
+            </div>
+          </>
         )}
 
-  
-        {step === 2 && (
-          <form onSubmit={handlePasswordSubmit}>
-            <input
-              type="password"
-              placeholder="Nueva contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-
-            <input
-              type="password"
-              placeholder="Confirmar contraseña"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-
-            <button type="submit">Cambiar contraseña</button>
-          </form>
-        )}
-      </div>
-
-      {showModal && (
-        <div className="modal">
-          <div className="modal-content">
-            <h3>¡Contraseña actualizada!</h3>
-            <p>La contraseña del correo {email} fue cambiada correctamente</p>
-
-            <Link to="/">Ir al inicio de sesión</Link>
-            <br />
-            <button onClick={() => setShowModal(false)}>Cerrar</button>
-          </div>
+        <div className="reset-links">
+          <Link to="/">Volver al inicio de sesión</Link>
         </div>
-      )}
+      </form>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBd7T7Oed283lTPrhCoF2XoOJLYpjipUj4",
@@ -13,9 +14,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+export const db = getFirestore(app);
 
-// 👇 AQUÍ VA LO QUE PREGUNTAS
-googleProvider.setCustomParameters({
-  prompt: "select_account"
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
+
+export const githubProvider = new GithubAuthProvider();
+githubProvider.setCustomParameters({ 
+  login: " " // ← espacio fuerza a GitHub a mostrar el login siempre
 });
+
+export const facebookProvider = new FacebookAuthProvider();
+facebookProvider.setCustomParameters({ auth_type: "reauthenticate" });
