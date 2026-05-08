@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { auth, db, googleProvider, githubProvider, facebookProvider } from "./Firebase";
 import {
   signInWithEmailAndPassword,
-  signInWithPopup
+  signInWithPopup,
+  linkWithCredential,
+  GithubAuthProvider,
+  signOut
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
-// ─── Helper: crea el doc en Firestore solo si no existe aún ─────────────────
 async function ensureUserDoc(user) {
   const ref = doc(db, "users", user.uid);
   const snap = await getDoc(ref);
@@ -15,7 +17,6 @@ async function ensureUserDoc(user) {
     const nameParts = (user.displayName || "").split(" ");
     const nombre   = nameParts[0] || "";
     const apellido = nameParts.slice(1).join(" ") || "";
-
     await setDoc(ref, {
       uid:           user.uid,
       email:         user.email || "",
@@ -33,11 +34,17 @@ async function ensureUserDoc(user) {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [form, setForm]     = useState({ email: "", password: "" });
-  const [error, setError]   = useState("");
+  const [form, setForm]       = useState({ email: "", password: "" });
+  const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  // ─── Al cargar la página cierra cualquier sesión activa ──────────────────
+  useEffect(() => {
+    signOut(auth);
+    sessionStorage.removeItem("pendingGithubToken");
+  }, []);
 
   // ─── Email / contraseña ──────────────────────────────────────────────────
   const handleSubmit = async (e) => {
@@ -77,10 +84,26 @@ function LoginPage() {
     try {
       setLoading(true);
       setError("");
+      await signOut(auth);
       const result = await signInWithPopup(auth, googleProvider);
-      await ensureUserDoc(result.user);          // ← crea doc si no existe
+
+      // Si venía de un intento fallido de GitHub, vincular automáticamente
+      const pendingToken = sessionStorage.getItem("pendingGithubToken");
+      if (pendingToken) {
+        try {
+          const githubCredential = GithubAuthProvider.credential(pendingToken);
+          await linkWithCredential(result.user, githubCredential);
+        } catch (linkErr) {
+          // Si ya estaba vinculado no pasa nada
+        }
+        sessionStorage.removeItem("pendingGithubToken");
+      }
+
+      await ensureUserDoc(result.user);
       navigate("/Welcome", { replace: true });
+
     } catch (err) {
+      await signOut(auth);
       if (err.code !== "auth/cancelled-popup-request") {
         setError("Error con Google");
       }
@@ -95,18 +118,21 @@ function LoginPage() {
     try {
       setLoading(true);
       setError("");
+      await signOut(auth);
       const result = await signInWithPopup(auth, githubProvider);
-      await ensureUserDoc(result.user);          // ← crea doc si no existe
-      navigate("/Welcome", { replace: true });   // ← ruta unificada
+      await ensureUserDoc(result.user);
+      navigate("/Welcome", { replace: true });
+
     } catch (err) {
-      switch (err.code) {
-        case "auth/account-exists-with-different-credential":
-          setError("Ya existe una cuenta con este correo. Inicia sesión con Google o Facebook.");
-          break;
-        case "auth/cancelled-popup-request":
-          break;
-        default:
-          setError("Error con GitHub");
+      await signOut(auth);
+      if (err.code === "auth/account-exists-with-different-credential") {
+        const githubCredential = GithubAuthProvider.credentialFromError(err);
+        if (githubCredential) {
+          sessionStorage.setItem("pendingGithubToken", githubCredential.accessToken);
+        }
+        setError("Este correo ya tiene cuenta con Google. Haz clic en 'Continuar con Google' para entrar.");
+      } else if (err.code !== "auth/cancelled-popup-request") {
+        setError("Error con GitHub: " + err.code);
       }
     } finally {
       setLoading(false);
@@ -119,12 +145,16 @@ function LoginPage() {
     try {
       setLoading(true);
       setError("");
+      await signOut(auth);
       const result = await signInWithPopup(auth, facebookProvider);
-      await ensureUserDoc(result.user);          // ← crea doc si no existe
-      navigate("/Welcome", { replace: true });   // ← ruta unificada
+      if (result?.user) {
+        await ensureUserDoc(result.user);
+        navigate("/Welcome", { replace: true });
+      }
     } catch (err) {
+      await signOut(auth);
       if (err.code !== "auth/cancelled-popup-request") {
-        setError("Error con Facebook");
+        setError("Error con Facebook: " + err.code);
       }
     } finally {
       setLoading(false);
@@ -190,7 +220,7 @@ function LoginPage() {
 
         <div className="links">
           <a href="/register">Crear cuenta</a>
-          <a href="/reset">Cambiar contraseña</a>
+          <a href="/reset">¿Olvidaste tu contraseña?</a>
           <a href="/forgot">¿Olvidaste tu cuenta?</a>
         </div>
       </form>

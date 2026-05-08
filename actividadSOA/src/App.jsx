@@ -32,6 +32,7 @@ import Dashboard from "./parcial/Dashboard";
 import WelcomePage from "./parcial/Welcome";
 
 
+
 function App() {
   return (
     <BrowserRouter>
@@ -58,7 +59,8 @@ function App() {
         <Route path="/useOptimistic" element={<UseOptimisticExample />} />    
         <Route path="/useCallback" element={<UseCallbalckExample />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/welcome" element={<WelcomePage/>} />        
+        <Route path="/welcome" element={<WelcomePage/>} />  
+ 
       </Routes>
     </BrowserRouter>
   );

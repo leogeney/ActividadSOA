@@ -7,6 +7,7 @@ import ForgotPage from "./parcial/ForgotPage";
 import ResetPage from "./parcial/ResetPage";
 import Welcome from "./parcial/Welcome"; 
 import Dashboard from "./parcial/Dashboard";
+import ResetPasswordPage from "./parcial/ResetPasswordPage";  
     
 
 
@@ -21,6 +22,8 @@ function Parcial1() {
         <Route path="/reset" element={<ResetPage />} />
         <Route path="/Welcome" element={<Welcome />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        
       </Routes>
     </BrowserRouter>
   );

@@ -5,78 +5,61 @@ import { doc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 function RegisterPage() {
-  const [email, setEmail]                   = useState("");
-  const [password, setPassword]             = useState("");
+  const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [username, setUsername]             = useState("");
-  const [nombre, setNombre]                 = useState("");
-  const [apellido, setApellido]             = useState("");
-  const [tiempoInicial, setTiempoInicial]   = useState(""); // fecha elegida por el usuario
-  const [error, setError]                   = useState("");
-  const [loading, setLoading]               = useState(false);
+  const [username, setUsername] = useState("");
+  const [nombre, setNombre] = useState("");
+  const [apellido, setApellido] = useState("");
+  const [tiempoInicial, setTiempoInicial] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
-  // ─── Validación de contraseña ───────────────────────────────────────────────
   const validatePassword = (pass) => {
-    if (pass.length < 8)                           return "La contraseña debe tener mínimo 8 caracteres";
-    if (!/[A-Z]/.test(pass))                       return "Debe contener al menos una letra mayúscula";
-    if (!/[a-z]/.test(pass))                       return "Debe contener al menos una letra minúscula";
-    if (!/\d/.test(pass))                          return "Debe contener al menos un número";
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pass))     return "Debe contener al menos un carácter especial";
+    if (pass.length < 8) return "La contraseña debe tener mínimo 8 caracteres";
+    if (!/[A-Z]/.test(pass)) return "Debe contener al menos una mayúscula";
+    if (!/[a-z]/.test(pass)) return "Debe contener al menos una minúscula";
+    if (!/\d/.test(pass)) return "Debe contener al menos un número";
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pass))
+      return "Debe contener al menos un carácter especial";
+
     return null;
   };
 
-  // ─── Indicador de fortaleza ─────────────────────────────────────────────────
-  const getPasswordStrength = () => {
-    if (!password) return null;
-    let score = 0;
-    if (password.length >= 8)                      score++;
-    if (/[A-Z]/.test(password))                    score++;
-    if (/[a-z]/.test(password))                    score++;
-    if (/\d/.test(password))                       score++;
-    if (/[!@#$%^&*(),.?":{}|<>]/.test(password))  score++;
-    if (score <= 2) return { label: "Débil",  color: "red"    };
-    if (score <= 4) return { label: "Media",  color: "orange" };
-    return           { label: "Fuerte", color: "green"  };
-  };
-
-  const strength = getPasswordStrength();
-
-  // ─── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validaciones básicas
-    if (!email || !password || !confirmPassword || !username || !nombre || !apellido) {
+    const telefonoLimpio = telefono.replace(/\s+/g, "");
+
+    if (
+      !email ||
+      !telefonoLimpio ||
+      !password ||
+      !confirmPassword ||
+      !username ||
+      !nombre ||
+      !apellido
+    ) {
       setError("Todos los campos son obligatorios");
       return;
     }
-    if (!email.includes("@") || !email.split("@")[1]?.includes(".")) {
-      setError("Email inválido");
+
+    if (!/^\d{10,15}$/.test(telefonoLimpio)) {
+      setError("Número de teléfono inválido");
       return;
     }
-    if (nombre.trim().length < 2) {
-      setError("El nombre debe tener mínimo 2 caracteres");
-      return;
-    }
-    if (apellido.trim().length < 2) {
-      setError("El apellido debe tener mínimo 2 caracteres");
-      return;
-    }
-    if (username.length < 3) {
-      setError("El username debe tener mínimo 3 caracteres");
-      return;
-    }
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      setError("El username solo puede contener letras, números y guiones bajos");
+
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden");
       return;
     }
 
     const passwordError = validatePassword(password);
-    if (passwordError) { setError(passwordError); return; }
-
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden");
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -84,34 +67,37 @@ function RegisterPage() {
       setLoading(true);
       setError("");
 
-      // 1. Crear usuario en Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
       const user = userCredential.user;
 
-      // 2. Actualizar displayName
-      await updateProfile(user, { displayName: `${nombre} ${apellido}` });
+      await updateProfile(user, {
+        displayName: `${nombre} ${apellido}`
+      });
 
-      // 3. Convertir tiempoInicial a Timestamp si el usuario eligió una fecha
       const tiempoInicialTs = tiempoInicial
         ? Timestamp.fromDate(new Date(tiempoInicial))
-        : serverTimestamp(); // si no elige fecha, usa el momento actual
+        : serverTimestamp();
 
-      // 4. Guardar en Firestore con TODOS los campos que usa el Dashboard
       await setDoc(doc(db, "users", user.uid), {
-        uid:           user.uid,
-        email:         user.email,
-        username:      username,
-        nombre:        nombre.trim(),
-        apellido:      apellido.trim(),
-        role:          "user",       // Para hacer admin, cámbialo en Firestore
-        activo:        true,
+        uid: user.uid,
+        email: user.email,
+        telefono: telefonoLimpio,
+        username,
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        role: "user",
+        activo: true,
         tiempoInicial: tiempoInicialTs,
-        salida:        null,         // Se llena cuando el usuario "sale" / expira
-        createdAt:     serverTimestamp(),
+        salida: null,
+        createdAt: serverTimestamp()
       });
 
       navigate("/Welcome", { replace: true });
-
     } catch (err) {
       switch (err.code) {
         case "auth/email-already-in-use":
@@ -120,11 +106,8 @@ function RegisterPage() {
         case "auth/invalid-email":
           setError("Correo inválido");
           break;
-        case "auth/weak-password":
-          setError("Contraseña muy débil");
-          break;
         default:
-          setError("Error al crear la cuenta: " + err.message);
+          setError("Error al crear cuenta");
       }
     } finally {
       setLoading(false);
@@ -138,25 +121,42 @@ function RegisterPage() {
 
         {error && <div className="error">{error}</div>}
 
-        {/* ─── Correo ─────────────────────────────────────────────────────── */}
         <div className="field">
           <label>Correo electrónico</label>
           <input
-            type="email"                         
-            placeholder="example@gmail.com"
+            type="email"
+            placeholder="correo@gmail.com"
             value={email}
-            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError("");
+            }}
           />
         </div>
 
-        {/* ─── Nombre y Apellido ───────────────────────────────────────────── */}
+        <div className="field">
+          <label>Número de teléfono</label>
+          <input
+            type="tel"
+            placeholder="3001234567"
+            value={telefono}
+            onChange={(e) => {
+              setTelefono(e.target.value);
+              setError("");
+            }}
+          />
+        </div>
+
         <div className="field">
           <label>Nombre</label>
           <input
             type="text"
             placeholder="Tu nombre"
             value={nombre}
-            onChange={(e) => { setNombre(e.target.value); setError(""); }}
+            onChange={(e) => {
+              setNombre(e.target.value);
+              setError("");
+            }}
           />
         </div>
 
@@ -166,59 +166,90 @@ function RegisterPage() {
             type="text"
             placeholder="Tu apellido"
             value={apellido}
-            onChange={(e) => { setApellido(e.target.value); setError(""); }}
+            onChange={(e) => {
+              setApellido(e.target.value);
+              setError("");
+            }}
           />
         </div>
 
-        {/* ─── Username ───────────────────────────────────────────────────── */}
         <div className="field">
           <label>Nombre de usuario</label>
           <input
             type="text"
-            placeholder="Solo letras, números y _"
+            placeholder="Username"
             value={username}
-            onChange={(e) => { setUsername(e.target.value); setError(""); }}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setError("");
+            }}
           />
         </div>
 
-        {/* ─── Tiempo inicial (opcional) ──────────────────────────────────── */}
-        
-
-        {/* ─── Contraseña ─────────────────────────────────────────────────── */}
         <div className="field">
-          <label>Contraseña</label>
-          <input
-            type="password"
-            placeholder="Mínimo 8 caracteres"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setError(""); }}
-          />
-          {strength && (
-            <small style={{ color: strength.color }}>Fortaleza: {strength.label}</small>
-          )}
-        </div>
+  <label>Contraseña</label>
+  <input
+    type="password"
+    placeholder="Tu contraseña"
+    value={password}
+    onChange={(e) => {
+      setPassword(e.target.value);
+      setError("");
+    }}
+  />
+
+  <div style={{ marginTop: "8px", fontSize: "12px", lineHeight: "1.6" }}>
+    <small style={{ color: password.length >= 8 ? "green" : "red" }}>
+      {password.length >= 8 ? "✓" : "✗"} Mínimo 8 caracteres
+    </small>
+    <br />
+
+    <small style={{ color: /[A-Z]/.test(password) ? "green" : "red" }}>
+      {/[A-Z]/.test(password) ? "✓" : "✗"} Al menos una letra mayúscula
+    </small>
+    <br />
+
+    <small style={{ color: /[a-z]/.test(password) ? "green" : "red" }}>
+      {/[a-z]/.test(password) ? "✓" : "✗"} Al menos una letra minúscula
+    </small>
+    <br />
+
+    <small style={{ color: /\d/.test(password) ? "green" : "red" }}>
+      {/\d/.test(password) ? "✓" : "✗"} Al menos un número
+    </small>
+    <br />
+
+    <small
+      style={{
+        color: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+          ? "green"
+          : "red"
+      }}
+    >
+      {/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "✓" : "✗"} Al menos un carácter especial
+    </small>
+  </div>
+</div>
 
         <div className="field">
           <label>Confirmar contraseña</label>
           <input
             type="password"
-            placeholder="Repite tu contraseña"
+            placeholder="Confirmar contraseña"
             value={confirmPassword}
-            onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              setError("");
+            }}
           />
-          {confirmPassword && (
-            <small style={{ color: password === confirmPassword ? "green" : "red" }}>
-              {password === confirmPassword ? "✓ Las contraseñas coinciden" : "✗ No coinciden"}
-            </small>
-          )}
         </div>
 
         <button type="submit" disabled={loading}>
-          {loading ? "Creando cuenta..." : "Crear cuenta"}
+          {loading ? "Creando..." : "Crear cuenta"}
         </button>
 
         <div className="links">
-          <a href="/">¿Ya tienes una cuenta? Inicia sesión</a>
+          <a href="/">¿Ya tienes cuenta?</a>
         </div>
       </form>
     </div>
