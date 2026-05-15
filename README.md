@@ -29,7 +29,7 @@ Sigue estos pasos para correr la aplicación en tu entorno local:
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/leogney/ActividadSOA.git
+git clone https://github.com/leogeney/ActividadSOA.git
 ```
 
 ### 2. Acceder al directorio del proyecto
