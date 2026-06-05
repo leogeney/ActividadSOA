@@ -86,16 +86,11 @@ function Dashboard() {
     return user?.displayName || user?.email?.split("@")[0] || "Usuario";
   };
 
-  const tabs =
-    role === "admin"
-      ? [
-          { id: "home", label: "Directorio", icon: "◈" },
-          
-        ]
-      : [
-          { id: "home", label: "Inicio", icon: "◈" },
-          { id: "profile", label: "Mi Perfil", icon: "◉" },
-        ];
+  // ── TABS unificados para ambos roles ──
+  const tabs = [
+    { id: "home", label: role === "admin" ? "Directorio" : "Inicio", icon: "◈" },
+    { id: "profile", label: "Mi Perfil", icon: "◉" },
+  ];
 
   if (loading) {
     return (
@@ -356,7 +351,6 @@ function Dashboard() {
               {/* Info grid */}
               <h3 style={styles.sectionLabel}>Información Personal</h3>
               <div style={styles.infoGrid}>
-                
                 <InfoCard label="Username" value={userData?.username || "No asignado"} icon="🪪" />
                 <InfoCard label="Correo Electrónico" value={user?.email} icon="✉️" />
                 <InfoCard label="Fecha de Alta" value={formatDate(userData?.tiempoInicial || userData?.createdAt)} icon="📅" />
@@ -492,8 +486,6 @@ const styles = {
     background: "#1d4ed8", filter: "blur(110px)",
     opacity: 0.12, bottom: "5%", right: "5%", zIndex: 0, pointerEvents: "none",
   },
-
-  /* HEADER */
   header: {
     position: "sticky", top: 0, zIndex: 100,
     background: "rgba(10,10,12,0.75)",
@@ -545,8 +537,6 @@ const styles = {
     color: "#94a3b8", padding: "8px 16px", borderRadius: "10px",
     cursor: "pointer", fontSize: "13px", fontWeight: "600",
   },
-
-  /* MODAL */
   modalOverlay: {
     position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
     backdropFilter: "blur(6px)", display: "flex",
@@ -573,8 +563,6 @@ const styles = {
     border: "none", borderRadius: "12px",
     color: "white", cursor: "pointer", fontSize: "14px", fontWeight: "700",
   },
-
-  /* MAIN */
   main: { maxWidth: "1100px", margin: "0 auto", padding: "32px 24px", position: "relative", zIndex: 1 },
   card: {
     background: "rgba(255,255,255,0.025)", backdropFilter: "blur(20px)",
@@ -582,8 +570,6 @@ const styles = {
     padding: "36px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
   },
   fadeIn: { animation: "fadeIn 0.35s ease-out forwards" },
-
-  /* SECTION HEADER */
   sectionHeader: {
     display: "flex", justifyContent: "space-between", alignItems: "flex-start",
     marginBottom: "24px",
@@ -602,8 +588,6 @@ const styles = {
     fontSize: "13px", fontWeight: "700", color: "#64748b",
     textTransform: "uppercase", letterSpacing: "1px", margin: "0 0 18px",
   },
-
-  /* WELCOME (user home) */
   welcomeBox: {
     textAlign: "center", padding: "60px 20px",
     display: "flex", flexDirection: "column", alignItems: "center", gap: "16px",
@@ -617,8 +601,6 @@ const styles = {
     border: "none", borderRadius: "12px",
     color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer",
   },
-
-  /* PROFILE TAB */
   profileHero: {
     display: "flex", alignItems: "center", gap: "24px",
     background: "rgba(0,0,0,0.2)", borderRadius: "16px",
@@ -637,8 +619,6 @@ const styles = {
     marginLeft: "auto", padding: "8px 16px",
     borderRadius: "10px", fontSize: "12px", fontWeight: "600",
   },
-
-  /* INFO GRID */
   infoGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
@@ -652,8 +632,6 @@ const styles = {
   infoCardIcon: { fontSize: "18px", marginTop: "2px", flexShrink: 0 },
   infoCardLabel: { fontSize: "11px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "5px" },
   infoCardValue: { fontSize: "15px", color: "#f1f5f9", fontWeight: "500", wordBreak: "break-all" },
-
-  /* TABLE */
   searchWrapper: { position: "relative", display: "flex", alignItems: "center", marginBottom: "20px" },
   searchIcon: { position: "absolute", left: "14px", fontSize: "14px", pointerEvents: "none" },
   searchInput: {
@@ -676,7 +654,6 @@ const styles = {
   tr: { borderBottom: "1px solid rgba(255,255,255,0.02)" },
   statusBadge: { padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "600" },
   miniBadge: { padding: "2px 8px", borderRadius: "6px", fontSize: "10px", textTransform: "uppercase" },
-
   divider: {
     height: "1px", margin: "24px 0",
     background: "linear-gradient(to right,rgba(255,255,255,0),rgba(255,255,255,0.08),rgba(255,255,255,0))",
