@@ -17,7 +17,12 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 export const googleProvider = new GoogleAuthProvider();
-export const githubProvider = new GithubAuthProvider();
-export const facebookProvider = new FacebookAuthProvider();
-
 googleProvider.setCustomParameters({ prompt: "select_account" });
+
+export const githubProvider = new GithubAuthProvider();
+githubProvider.setCustomParameters({ 
+  login: " " // ← espacio fuerza a GitHub a mostrar el login siempre
+});
+
+export const facebookProvider = new FacebookAuthProvider();
+facebookProvider.setCustomParameters({ auth_type: "reauthenticate" });

@@ -34,8 +34,7 @@ function WelcomePage() {
         <p className="name">{user.displayName || "Usuario"}</p>
         <p className="email">{user.email}</p>
 
-        <p className="message">Tu cuenta ha sido registrada exitosamente 🎉</p>
-
+        
         <button onClick={() => navigate("/Dashboard", { replace: true })}>
           Ir al dashboard
         </button>
