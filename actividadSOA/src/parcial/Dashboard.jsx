@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "./Firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
@@ -13,6 +13,25 @@ function Dashboard() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("home");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // ── Appointments CRUD state ──
+  const [appointments, setAppointments] = useState([]);
+  const [showApptModal, setShowApptModal] = useState(false);
+  const [editingAppt, setEditingAppt] = useState(null);
+  const [deletingAppt, setDeletingAppt] = useState(null);
+  const [apptSearch, setApptSearch] = useState("");
+  const [formClient, setFormClient] = useState("");
+  const [formService, setFormService] = useState("");
+  const [formStatus, setFormStatus] = useState("pendiente");
+  const [formPhone, setFormPhone] = useState("");
+  const [formDate, setFormDate] = useState("");
+  const [formTime, setFormTime] = useState("");
+  const [formErrors, setFormErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [takenSlots, setTakenSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,6 +53,9 @@ function Dashboard() {
           const list = snapshot.docs.map((d) => d.data());
           setAllUsers(list);
         }
+
+        // Cargar citas (pasar el rol recién obtenido, no el state que aún no se actualizó)
+        fetchAppointments(userRole, currentUser);
       } catch (err) {
         console.error("Error cargando datos:", err);
         setRole("user");
@@ -61,6 +83,234 @@ function Dashboard() {
     });
   };
 
+  // ── CRUD: Citas ──
+
+  const fetchAppointments = async (rol, usr) => {
+    const effectiveRole = rol || role;
+    const effectiveUser = usr || user;
+    try {
+      let q;
+      if (effectiveRole === "admin") {
+        q = query(collection(db, "citas"), orderBy("createdAt", "desc"));
+      } else {
+        q = query(collection(db, "citas"), where("creadoPor", "==", effectiveUser?.uid || ""));
+      }
+      const snapshot = await getDocs(q);
+      let list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (effectiveRole !== "admin") list.sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0));
+      setAppointments(list);
+    } catch (err) {
+      console.error("Error cargando citas:", err);
+    }
+  };
+
+  const resetApptForm = () => {
+    setFormClient("");
+    setFormService("");
+    setFormStatus("pendiente");
+    setFormPhone("");
+    setFormDate("");
+    setFormTime("");
+    setFormErrors({});
+    setTakenSlots([]);
+    setIsCancelling(false);
+  };
+
+  const openCreateAppt = () => {
+    setEditingAppt(null);
+    resetApptForm();
+    setFormClient(userData?.nombre || user?.displayName || "");
+    setFormPhone(userData?.telefono || "");
+    setShowApptModal(true);
+  };
+
+  const openEditAppt = (appt) => {
+    setIsCancelling(false);
+    setEditingAppt(appt);
+    setFormClient(appt.cliente || "");
+    setFormService(appt.servicio || "");
+    setFormStatus(appt.estado || "pendiente");
+    setFormPhone(appt.telefono || "");
+    const d = appt.fecha?.toDate
+      ? appt.fecha.toDate().toISOString().split("T")[0]
+      : appt.fecha || "";
+    setFormDate(d);
+    setFormTime(appt.hora || "");
+    setFormErrors({});
+    setShowApptModal(true);
+  };
+
+  const TIME_SLOTS = [];
+  for (let h = 8; h <= 17; h++) {
+    TIME_SLOTS.push(`${String(h).padStart(2, "0")}:00`);
+    if (h < 17) TIME_SLOTS.push(`${String(h).padStart(2, "0")}:30`);
+  }
+
+  const fetchTakenSlots = async (dateStr) => {
+    if (!dateStr) { setTakenSlots([]); return; }
+    setLoadingSlots(true);
+    try {
+      const q = query(collection(db, "citas"), where("fecha", "==", dateStr));
+      const snap = await getDocs(q);
+      const taken = [];
+      for (const d of snap.docs) {
+        const c = d.data();
+        if (!c.hora) continue;
+        if (editingAppt && d.id === editingAppt.id) continue;
+        const [ch, cm] = c.hora.split(":").map(Number);
+        const base = ch * 60 + cm;
+        taken.push(base);
+      }
+      const takenSet = new Set(taken);
+      const result = TIME_SLOTS.reduce((acc, slot) => {
+        const [sh, sm] = slot.split(":").map(Number);
+        const smin = sh * 60 + sm;
+        let isTaken = false;
+        for (const t of takenSet) {
+          if (Math.abs(smin - t) < 30) { isTaken = true; break; }
+        }
+        acc[slot] = isTaken;
+        return acc;
+      }, {});
+      setTakenSlots(result);
+    } catch (err) {
+      console.error("Error cargando slots:", err);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  const checkTimeConflict = async () => {
+    if (!formDate || !formTime) return null;
+    try {
+      const q = query(collection(db, "citas"), where("fecha", "==", formDate));
+      const snap = await getDocs(q);
+      const [h, m] = formTime.split(":").map(Number);
+      const newMinutes = h * 60 + m;
+      for (const docSnap of snap.docs) {
+        const c = docSnap.data();
+        if (editingAppt && docSnap.id === editingAppt.id) continue;
+        if (!c.hora) continue;
+        const [ch, cm] = c.hora.split(":").map(Number);
+        const cMinutes = ch * 60 + cm;
+        if (Math.abs(newMinutes - cMinutes) < 30) {
+          return `Ya existe una cita a las ${c.hora} (${c.cliente}). Debe haber al menos 30 min de diferencia.`;
+        }
+      }
+    } catch (err) {
+      console.error("Error verificando conflicto de horario:", err);
+    }
+    return null;
+  };
+
+  const validateApptForm = () => {
+    const errors = {};
+    if (isCancelling) {
+      // no validation needed for cancel
+    } else if (editingAppt && role === "admin") {
+      if (!formClient.trim()) errors.cliente = "El nombre del cliente es obligatorio";
+      if (formClient.trim().length > 100) errors.cliente = "Máximo 100 caracteres";
+      if (formService.length > 300) errors.servicio = "Máximo 300 caracteres";
+      if (!formDate.trim()) errors.fecha = "La fecha es obligatoria";
+      if (!formTime.trim()) errors.hora = "La hora es obligatoria";
+    } else if (editingAppt) {
+      // user editing servicio/hora only — no required validations
+      if (formService.length > 300) errors.servicio = "Máximo 300 caracteres";
+    } else {
+      if (!formClient.trim()) errors.cliente = "El nombre del cliente es obligatorio";
+      if (formClient.trim().length > 100) errors.cliente = "Máximo 100 caracteres";
+      if (formService.length > 300) errors.servicio = "Máximo 300 caracteres";
+      if (!formDate.trim()) errors.fecha = "La fecha es obligatoria";
+      if (!formTime.trim()) errors.hora = "La hora es obligatoria";
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleApptSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateApptForm()) return;
+    if (!isCancelling) {
+      const conflict = await checkTimeConflict();
+      if (conflict) {
+        setFormErrors({ hora: conflict });
+        setSubmitting(false);
+        return;
+      }
+    }
+    setSubmitting(true);
+    try {
+      let newStatus = formStatus;
+      if (editingAppt && role === "admin") newStatus = "completada";
+      else if (!editingAppt && role !== "admin") newStatus = "pendiente";
+      const data = {
+        cliente: formClient.trim(),
+        servicio: formService.trim(),
+        estado: newStatus,
+        telefono: formPhone.trim(),
+        fecha: formDate || null,
+        hora: formTime || null,
+      };
+
+      if (editingAppt) {
+        await updateDoc(doc(db, "citas", editingAppt.id), {
+          ...data,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(collection(db, "citas"), {
+          ...data,
+          creadoPor: user?.uid || "",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      setShowApptModal(false);
+      resetApptForm();
+      await fetchAppointments(role, user);
+    } catch (err) {
+      console.error("Error guardando cita:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteAppt = async () => {
+    if (!deletingAppt) return;
+    try {
+      await deleteDoc(doc(db, "citas", deletingAppt.id));
+      setDeletingAppt(null);
+      await fetchAppointments(role, user);
+    } catch (err) {
+      console.error("Error eliminando cita:", err);
+    }
+  };
+
+  const filteredAppointments = appointments.filter((a) => {
+    const q = apptSearch.toLowerCase();
+    return (
+      (a.cliente || "").toLowerCase().includes(q) ||
+      (a.servicio || "").toLowerCase().includes(q) ||
+      (a.estado || "").toLowerCase().includes(q) ||
+      (a.telefono || "").toLowerCase().includes(q)
+    );
+  });
+
+  const statusColors = {
+    pendiente: { color: "#fbbf24", bg: "rgba(251,191,36,0.1)" },
+    confirmada: { color: "#3b82f6", bg: "rgba(59,130,246,0.1)" },
+    completada: { color: "#4ade80", bg: "rgba(74,222,128,0.1)" },
+    cancelada: { color: "#fb7185", bg: "rgba(251,113,133,0.1)" },
+  };
+
+  const statusLabels = {
+    pendiente: "Pendiente",
+    confirmada: "Confirmada",
+    completada: "Completada",
+    cancelada: "Cancelada",
+  };
+
   const filteredUsers = allUsers.filter((u) => {
     const q = search.toLowerCase();
     return (
@@ -71,6 +321,12 @@ function Dashboard() {
       (u.role || "").toLowerCase().includes(q)
     );
   });
+
+  useEffect(() => {
+    if (formDate && !isCancelling) fetchTakenSlots(formDate);
+    else setTakenSlots([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formDate, isCancelling]);
 
   const getInitials = () => {
     const name = userData?.nombre || user?.displayName || user?.email || "U";
@@ -89,6 +345,7 @@ function Dashboard() {
   // ── TABS unificados para ambos roles ──
   const tabs = [
     { id: "home", label: role === "admin" ? "Directorio" : "Inicio", icon: "◈" },
+    { id: "appointments", label: "Citas", icon: "📅" },
     { id: "profile", label: "Mi Perfil", icon: "◉" },
   ];
 
@@ -206,6 +463,380 @@ function Dashboard() {
                 className="modal-confirm"
               >
                 Sí, cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── APPOINTMENT FORM MODAL (Create / Edit) ── */}
+      {showApptModal && (
+        <div style={styles.modalOverlay} onClick={() => { setShowApptModal(false); resetApptForm(); }}>
+          <div style={styles.apptModal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.apptModalHeader}>
+              <h3 style={styles.apptModalTitle}>
+                {editingAppt ? "Editar Cita" : "Nueva Cita"}
+              </h3>
+              <button
+                onClick={() => { setShowApptModal(false); resetApptForm(); }}
+                style={styles.apptModalClose}
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleApptSubmit} style={styles.apptForm}>
+              {isCancelling ? (
+                <>
+                  <div style={{ ...styles.formNotice, marginBottom: "16px" }}>
+                    Solo puedes cancelar esta cita. Los demás campos son de solo lectura.
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Cliente</label>
+                    <input type="text" value={formClient} disabled style={styles.formInputDisabled} className="form-input" />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Servicio</label>
+                    <textarea value={formService} disabled rows="2" style={{ ...styles.formInput, ...styles.formTextarea, opacity: 0.5 }} className="form-input" />
+                  </div>
+                  <div style={styles.formRow}>
+                    <div style={{ flex: 1 }}>
+                      <label style={styles.formLabel}>Fecha</label>
+                      <input type="date" value={formDate} disabled style={{ ...styles.formInput, opacity: 0.5 }} className="form-input" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={styles.formLabel}>Hora</label>
+                      <input type="time" value={formTime} disabled style={{ ...styles.formInput, opacity: 0.5 }} className="form-input" />
+                    </div>
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Estado *</label>
+                    <select
+                      value={formStatus}
+                      onChange={(e) => setFormStatus(e.target.value)}
+                      style={styles.formInput}
+                      className="form-input"
+                    >
+                      <option value="pendiente">Pendiente</option>
+                      <option value="cancelada">Cancelar cita</option>
+                    </select>
+                  </div>
+                </>
+              ) : editingAppt && role === "admin" ? (
+                <>
+                  <div style={{ ...styles.formNotice, marginBottom: "16px" }}>
+                    Al guardar, el estado cambiará a "Completada".
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Cliente *</label>
+                    <input
+                      type="text"
+                      value={formClient}
+                      onChange={(e) => setFormClient(e.target.value)}
+                      placeholder="Nombre del cliente"
+                      style={{
+                        ...styles.formInput,
+                        ...(formErrors.cliente ? styles.formInputError : {}),
+                      }}
+                      className="form-input"
+                    />
+                    {formErrors.cliente && <span style={styles.formError}>{formErrors.cliente}</span>}
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Servicio</label>
+                    <textarea
+                      value={formService}
+                      onChange={(e) => setFormService(e.target.value)}
+                      placeholder="Ej: Corte de cabello, manicure, asesoría..."
+                      rows="2"
+                      style={{
+                        ...styles.formInput,
+                        ...styles.formTextarea,
+                        ...(formErrors.servicio ? styles.formInputError : {}),
+                      }}
+                      className="form-input"
+                    />
+                    {formErrors.servicio && <span style={styles.formError}>{formErrors.servicio}</span>}
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Teléfono</label>
+                    <input
+                      type="text"
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                      placeholder="300 123 4567"
+                      style={styles.formInput}
+                      className="form-input"
+                    />
+                  </div>
+                  <div style={styles.formRow}>
+                    <div style={{ flex: 1 }}>
+                      <label style={styles.formLabel}>Fecha *</label>
+                      <input
+                        type="date"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        style={{
+                          ...styles.formInput,
+                          ...(formErrors.fecha ? styles.formInputError : {}),
+                        }}
+                        className="form-input"
+                      />
+                      {formErrors.fecha && <span style={styles.formError}>{formErrors.fecha}</span>}
+                    </div>
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Hora *</label>
+                    {formDate ? (
+                      loadingSlots ? (
+                        <span style={{ color: "#64748b", fontSize: "13px" }}>Cargando horarios...</span>
+                      ) : (
+                        <>
+                          <div style={styles.slotGrid}>
+                            {TIME_SLOTS.map((slot) => {
+                              const taken = takenSlots[slot];
+                              const selected = formTime === slot;
+                              return (
+                                <button
+                                  key={slot}
+                                  type="button"
+                                  disabled={taken}
+                                  onClick={() => setFormTime(slot)}
+                                  style={selected ? styles.slotBtnSelected : taken ? styles.slotBtnTaken : styles.slotBtn}
+                                >
+                                  {slot}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {formErrors.hora && <span style={styles.formError}>{formErrors.hora}</span>}
+                        </>
+                      )
+                    ) : (
+                      <span style={{ color: "#64748b", fontSize: "13px" }}>Selecciona una fecha primero</span>
+                    )}
+                  </div>
+                </>
+              ) : editingAppt ? (
+                <>
+                  <div style={{ ...styles.formNotice, marginBottom: "16px" }}>
+                    Solo puedes actualizar el servicio y la hora.
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Cliente</label>
+                    <input type="text" value={formClient} disabled style={styles.formInputDisabled} className="form-input" />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Servicio</label>
+                    <textarea
+                      value={formService}
+                      onChange={(e) => setFormService(e.target.value)}
+                      placeholder="Ej: Corte de cabello, manicure, asesoría..."
+                      rows="2"
+                      style={styles.formInput}
+                      className="form-input"
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Teléfono</label>
+                    <input type="text" value={formPhone} disabled style={styles.formInputDisabled} className="form-input" />
+                  </div>
+                  <div style={styles.formRow}>
+                    <div style={{ flex: 1 }}>
+                      <label style={styles.formLabel}>Fecha</label>
+                      <input type="date" value={formDate} disabled style={{ ...styles.formInput, opacity: 0.5 }} className="form-input" />
+                    </div>
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Hora</label>
+                    {formDate ? (
+                      loadingSlots ? (
+                        <span style={{ color: "#64748b", fontSize: "13px" }}>Cargando horarios...</span>
+                      ) : (
+                        <>
+                          <div style={styles.slotGrid}>
+                            {TIME_SLOTS.map((slot) => {
+                              const taken = takenSlots[slot];
+                              const selected = formTime === slot;
+                              return (
+                                <button
+                                  key={slot}
+                                  type="button"
+                                  disabled={taken}
+                                  onClick={() => setFormTime(slot)}
+                                  style={selected ? styles.slotBtnSelected : taken ? styles.slotBtnTaken : styles.slotBtn}
+                                >
+                                  {slot}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {formErrors.hora && <span style={styles.formError}>{formErrors.hora}</span>}
+                        </>
+                      )
+                    ) : (
+                      <span style={{ color: "#64748b", fontSize: "13px" }}>Selecciona una fecha primero</span>
+                    )}
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Estado</label>
+                    <input type="text" value={statusLabels[formStatus] || formStatus} disabled style={styles.formInputDisabled} className="form-input" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Cliente *</label>
+                    <input
+                      type="text"
+                      value={formClient}
+                      onChange={(e) => setFormClient(e.target.value)}
+                      placeholder="Nombre del cliente"
+                      disabled={role !== "admin"}
+                      style={{
+                        ...(role !== "admin" ? styles.formInputDisabled : styles.formInput),
+                        ...(formErrors.cliente ? styles.formInputError : {}),
+                      }}
+                      className="form-input"
+                    />
+                    {formErrors.cliente && <span style={styles.formError}>{formErrors.cliente}</span>}
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Servicio</label>
+                    <textarea
+                      value={formService}
+                      onChange={(e) => setFormService(e.target.value)}
+                      placeholder="Ej: Corte de cabello, manicure, asesoría..."
+                      rows="2"
+                      style={{
+                        ...styles.formInput,
+                        ...styles.formTextarea,
+                        ...(formErrors.servicio ? styles.formInputError : {}),
+                      }}
+                      className="form-input"
+                    />
+                    {formErrors.servicio && <span style={styles.formError}>{formErrors.servicio}</span>}
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Teléfono</label>
+                    <input
+                      type="text"
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                      placeholder="300 123 4567"
+                      style={styles.formInput}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div style={styles.formRow}>
+                    <div style={{ flex: 1 }}>
+                      <label style={styles.formLabel}>Fecha *</label>
+                      <input
+                        type="date"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        style={{
+                          ...styles.formInput,
+                          ...(formErrors.fecha ? styles.formInputError : {}),
+                        }}
+                        className="form-input"
+                      />
+                      {formErrors.fecha && <span style={styles.formError}>{formErrors.fecha}</span>}
+                    </div>
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Hora *</label>
+                    {formDate ? (
+                      loadingSlots ? (
+                        <span style={{ color: "#64748b", fontSize: "13px" }}>Cargando horarios...</span>
+                      ) : (
+                        <>
+                          <div style={styles.slotGrid}>
+                            {TIME_SLOTS.map((slot) => {
+                              const taken = takenSlots[slot];
+                              const selected = formTime === slot;
+                              return (
+                                <button
+                                  key={slot}
+                                  type="button"
+                                  disabled={taken}
+                                  onClick={() => setFormTime(slot)}
+                                  style={selected ? styles.slotBtnSelected : taken ? styles.slotBtnTaken : styles.slotBtn}
+                                  className={taken ? "" : "slot-btn"}
+                                >
+                                  {slot}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {formErrors.hora && <span style={styles.formError}>{formErrors.hora}</span>}
+                        </>
+                      )
+                    ) : (
+                      <span style={{ color: "#64748b", fontSize: "13px" }}>Selecciona una fecha primero</span>
+                    )}
+                  </div>
+                </>
+              )}
+
+              <div style={styles.apptModalActions}>
+                <button
+                  type="button"
+                  onClick={() => { setShowApptModal(false); resetApptForm(); }}
+                  style={styles.modalCancel}
+                  className="modal-cancel"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{
+                    ...styles.apptSubmitBtn,
+                    opacity: submitting ? 0.6 : 1,
+                  }}
+                  className="btn-hover"
+                >
+                  {submitting
+                    ? "Guardando..."
+                    : isCancelling
+                      ? "Cancelar Cita"
+                      : editingAppt
+                        ? "Actualizar Cita"
+                        : "Crear Cita"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE APPOINTMENT CONFIRM MODAL ── */}
+      {deletingAppt && (
+        <div style={styles.modalOverlay} onClick={() => setDeletingAppt(null)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalIcon}>🗑</div>
+            <h3 style={styles.modalTitle}>¿Eliminar cita?</h3>
+            <p style={styles.modalText}>
+              Se eliminará la cita de <strong>"{deletingAppt.cliente}"</strong> de forma permanente.
+              Esta acción no se puede deshacer.
+            </p>
+            <div style={styles.modalActions}>
+              <button
+                onClick={() => setDeletingAppt(null)}
+                style={styles.modalCancel}
+                className="modal-cancel"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteAppt}
+                style={styles.modalConfirm}
+                className="modal-confirm"
+              >
+                Sí, eliminar
               </button>
             </div>
           </div>
@@ -377,6 +1008,187 @@ function Dashboard() {
             </div>
           )}
 
+          {/* ---- TAB: APPOINTMENTS ---- */}
+          {activeTab === "appointments" && (
+            <div style={styles.fadeIn}>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <h2 style={styles.cardTitle}>
+                    Citas
+                    <span style={{ marginLeft: 10, fontSize: 18 }}>📅</span>
+                  </h2>
+                  <p style={styles.cardSubtitle}>Administra las citas agendadas</p>
+                </div>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <span style={styles.countTag}>
+                    {filteredAppointments.length} / {appointments.length} total
+                  </span>
+                  <button onClick={openCreateAppt} style={styles.createBtn} className="btn-hover">
+                    + Nueva Cita
+                  </button>
+                </div>
+              </div>
+
+              <div style={styles.searchWrapper}>
+                <span style={styles.searchIcon}>🔍</span>
+                <input
+                  type="text"
+                  placeholder={role === "admin" ? "Buscar por cliente, servicio, estado..." : "Buscar en mis citas..."}
+                  value={apptSearch}
+                  onChange={(e) => setApptSearch(e.target.value)}
+                  style={styles.searchInput}
+                  className="search-input"
+                />
+                {apptSearch && (
+                  <button onClick={() => setApptSearch("")} style={styles.clearBtn}>✕</button>
+                )}
+              </div>
+
+              {filteredAppointments.length === 0 ? (
+                <p style={styles.empty}>
+                  {apptSearch
+                    ? `Sin resultados para "${apptSearch}".`
+                    : "No hay citas aun. Agenda la primera!"}
+                </p>
+              ) : (
+                <div style={styles.tableWrapper}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        {["Cliente", "Servicio", "Fecha", "Hora", "Estado", "Acciones"].map((h) => (
+                          <th key={h} style={styles.th}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAppointments.map((a, i) => {
+                        const sc = statusColors[a.estado] || statusColors.pendiente;
+                        return (
+                          <tr key={a.id || i} className="table-row" style={styles.tr}>
+                            <td style={styles.td}>
+                              <div style={{ fontWeight: "600" }}>{a.cliente || "Sin nombre"}</div>
+                              {a.telefono && (
+                                <div style={{ fontSize: "11px", opacity: 0.5, marginTop: "2px" }}>
+                                  📞 {a.telefono}
+                                </div>
+                              )}
+                            </td>
+                            <td style={styles.td}>
+                              <span style={{ fontSize: "13px" }}>
+                                {a.servicio || <span style={{ opacity: 0.4, fontStyle: "italic" }}>Sin especificar</span>}
+                              </span>
+                            </td>
+                            <td style={styles.td}>
+                              <span style={{ fontSize: "13px" }}>
+                                {a.fecha
+                                  ? a.fecha.toDate
+                                    ? a.fecha.toDate().toLocaleDateString("es-CO")
+                                    : a.fecha
+                                  : <span style={{ opacity: 0.4 }}>—</span>}
+                              </span>
+                            </td>
+                            <td style={styles.td}>
+                              <span style={{ fontSize: "13px" }}>
+                                {a.hora || <span style={{ opacity: 0.4 }}>—</span>}
+                              </span>
+                            </td>
+                            <td style={styles.td}>
+                              <span style={{
+                                ...styles.statusBadge,
+                                color: sc.color,
+                                background: sc.bg,
+                              }}>
+                                {statusLabels[a.estado] || a.estado}
+                              </span>
+                            </td>
+                            <td style={styles.td}>
+                              <div style={{ display: "flex", gap: "8px" }}>
+                                {role === "admin" ? (
+                                  <>
+                                    {a.estado !== "completada" && (
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            await updateDoc(doc(db, "citas", a.id), { estado: "completada", updatedAt: serverTimestamp() });
+                                            await fetchAppointments(role, user);
+                                          } catch (err) { console.error(err); }
+                                        }}
+                                        style={styles.actionBtnComplete}
+                                        title="Completar cita"
+                                        className="action-btn-complete"
+                                      >
+                                        Completar
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => openEditAppt(a)}
+                                      style={styles.actionBtnEdit}
+                                      title="Editar cita"
+                                      className="action-btn-edit"
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={() => setDeletingAppt(a)}
+                                      style={styles.actionBtnDelete}
+                                      title="Eliminar cita"
+                                      className="action-btn-delete"
+                                    >
+                                      Eliminar
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => openEditAppt(a)}
+                                      style={{
+                                        ...styles.actionBtnEditUser,
+                                        ...(a.estado === "cancelada" || a.estado === "completada" ? { opacity: 0.4, cursor: "not-allowed" } : {}),
+                                      }}
+                                      title="Editar servicio u hora"
+                                      className="action-btn-edit"
+                                      disabled={a.estado === "cancelada" || a.estado === "completada"}
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setIsCancelling(true);
+                                        setEditingAppt(a);
+                                        setFormClient(a.cliente || "");
+                                        setFormService(a.servicio || "");
+                                        setFormStatus(a.estado || "pendiente");
+                                        setFormPhone(a.telefono || "");
+                                        const d = a.fecha?.toDate ? a.fecha.toDate().toISOString().split("T")[0] : a.fecha || "";
+                                        setFormDate(d);
+                                        setFormTime(a.hora || "");
+                                        setFormErrors({});
+                                        setShowApptModal(true);
+                                      }}
+                                      style={{
+                                        ...styles.actionBtnDelete,
+                                        ...(a.estado === "cancelada" || a.estado === "completada" ? { opacity: 0.4, cursor: "not-allowed" } : {}),
+                                      }}
+                                      title="Cancelar cita"
+                                      className="action-btn-delete"
+                                      disabled={a.estado === "cancelada" || a.estado === "completada"}
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </main>
 
@@ -397,8 +1209,20 @@ function Dashboard() {
         .modal-cancel:hover { background: rgba(255,255,255,0.08) !important; }
         .modal-confirm { transition: all 0.2s; }
         .modal-confirm:hover { filter: brightness(1.15); transform: translateY(-1px); }
+        .action-btn-edit { transition: all 0.2s; }
+        .action-btn-edit:hover { background: rgba(251,191,36,0.2) !important; }
+        .action-btn-complete { transition: all 0.2s; }
+        .action-btn-complete:hover { background: rgba(74,222,128,0.2) !important; }
+        .action-btn-delete { transition: all 0.2s; }
+        .action-btn-delete:hover { background: rgba(251,113,133,0.2) !important; }
         .search-input::placeholder { color: #475569; }
         .search-input:focus { outline: none; border-color: rgba(168,85,247,0.5) !important; box-shadow: 0 0 0 3px rgba(168,85,247,0.1); }
+        .form-input { transition: border-color 0.2s; }
+        .form-input:focus { outline: none; border-color: rgba(168,85,247,0.5) !important; box-shadow: 0 0 0 3px rgba(168,85,247,0.1); }
+        .form-input::placeholder { color: #475569; }
+        .form-input select { color-scheme: dark; }
+        .slot-btn { transition: all 0.2s; }
+        .slot-btn:hover:not(:disabled) { background: rgba(168,85,247,0.15) !important; border-color: rgba(168,85,247,0.3) !important; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes modalIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
       `}</style>
@@ -665,6 +1489,116 @@ const styles = {
     cursor: "pointer", fontSize: "14px", fontWeight: "600",
   },
   empty: { color: "#64748b", textAlign: "center", padding: "40px 0", fontSize: "14px" },
+
+  // ── Appointment CRUD styles ──
+  createBtn: {
+    display: "flex", alignItems: "center", gap: "6px",
+    background: "linear-gradient(135deg,#a855f7,#3b82f6)",
+    border: "none", borderRadius: "10px", padding: "10px 18px",
+    color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer",
+    whiteSpace: "nowrap",
+  },
+  apptModal: {
+    background: "rgba(20,20,28,0.98)", border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "20px", padding: "32px", maxWidth: "520px", width: "90%",
+    animation: "modalIn 0.2s ease-out",
+    boxShadow: "0 30px 60px rgba(0,0,0,0.5)", maxHeight: "90vh", overflowY: "auto",
+  },
+  apptModalHeader: {
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    marginBottom: "24px",
+  },
+  apptModalTitle: {
+    fontSize: "20px", fontWeight: "800", color: "#f8fafc", margin: 0,
+  },
+  apptModalClose: {
+    background: "rgba(255,255,255,0.06)", border: "none",
+    color: "#94a3b8", width: "32px", height: "32px", borderRadius: "8px",
+    cursor: "pointer", fontSize: "14px", display: "flex",
+    alignItems: "center", justifyContent: "center",
+  },
+  apptForm: { display: "flex", flexDirection: "column", gap: "18px" },
+  formGroup: { display: "flex", flexDirection: "column", gap: "6px" },
+  formLabel: {
+    fontSize: "12px", fontWeight: "600", color: "#94a3b8",
+    textTransform: "uppercase", letterSpacing: "0.5px",
+  },
+  formInput: {
+    width: "100%", padding: "11px 14px", boxSizing: "border-box",
+    background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "10px", color: "#f1f5f9", fontSize: "14px",
+  },
+  formInputError: { borderColor: "rgba(251,113,133,0.5) !important" },
+  formTextarea: { resize: "vertical", minHeight: "70px" },
+  formRow: { display: "flex", gap: "14px" },
+  formError: { fontSize: "11px", color: "#fb7185", marginTop: "2px" },
+  formInputDisabled: {
+    width: "100%", padding: "11px 14px", boxSizing: "border-box",
+    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)",
+    borderRadius: "10px", color: "#64748b", fontSize: "14px", cursor: "not-allowed",
+  },
+  formNotice: {
+    padding: "10px 14px", borderRadius: "10px", fontSize: "13px",
+    background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)",
+    color: "#fbbf24",
+  },
+  apptModalActions: {
+    display: "flex", gap: "12px", marginTop: "8px",
+  },
+  apptSubmitBtn: {
+    flex: 1, padding: "12px",
+    background: "linear-gradient(135deg,#a855f7,#3b82f6)",
+    border: "none", borderRadius: "12px",
+    color: "white", cursor: "pointer", fontSize: "14px", fontWeight: "700",
+  },
+  actionBtnEdit: {
+    padding: "6px 14px",
+    background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.25)",
+    borderRadius: "8px", color: "#60a5fa", cursor: "pointer",
+    fontSize: "12px", fontWeight: "600",
+  },
+  actionBtnEditUser: {
+    padding: "6px 14px",
+    background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.25)",
+    borderRadius: "8px", color: "#fbbf24", cursor: "pointer",
+    fontSize: "12px", fontWeight: "600",
+  },
+  slotGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))",
+    gap: "8px", marginTop: "6px",
+  },
+  slotBtn: {
+    padding: "8px 4px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)",
+    background: "rgba(255,255,255,0.04)", color: "#cbd5e1",
+    cursor: "pointer", fontSize: "13px", fontWeight: "600",
+    textAlign: "center", transition: "all 0.2s",
+  },
+  slotBtnTaken: {
+    padding: "8px 4px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.04)",
+    background: "rgba(255,255,255,0.02)", color: "#334155",
+    cursor: "not-allowed", fontSize: "13px", fontWeight: "400",
+    textAlign: "center", opacity: 0.5,
+  },
+  slotBtnSelected: {
+    padding: "8px 4px", borderRadius: "8px",
+    border: "1px solid rgba(168,85,247,0.5)",
+    background: "rgba(168,85,247,0.2)", color: "#c4b5fd",
+    cursor: "pointer", fontSize: "13px", fontWeight: "700",
+    textAlign: "center", transition: "all 0.2s",
+  },
+  actionBtnComplete: {
+    padding: "6px 14px",
+    background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)",
+    borderRadius: "8px", color: "#4ade80", cursor: "pointer",
+    fontSize: "12px", fontWeight: "600",
+  },
+  actionBtnDelete: {
+    padding: "6px 14px",
+    background: "rgba(251,113,133,0.1)", border: "1px solid rgba(251,113,133,0.25)",
+    borderRadius: "8px", color: "#fb7185", cursor: "pointer",
+    fontSize: "12px", fontWeight: "600",
+  },
   container: {
     minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center",
     background: "#0a0a0c",
