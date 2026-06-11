@@ -4,11 +4,35 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   linkWithCredential,
+  fetchSignInMethodsForEmail,
+  EmailAuthProvider,
   GithubAuthProvider,
   signOut, FacebookAuthProvider
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+
+function generatePassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#";
+  let pwd = "";
+  for (let i = 0; i < 12; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  return pwd;
+}
+
+async function linkEmailPassword(user) {
+  if (!user.email) return;
+  try {
+    const methods = await fetchSignInMethodsForEmail(auth, user.email);
+    if (methods.includes("password")) return;
+    const pwd = generatePassword();
+    const cred = EmailAuthProvider.credential(user.email, pwd);
+    await linkWithCredential(user, cred);
+    sessionStorage.setItem("autoPwd_" + user.uid, pwd);
+  } catch (err) {
+    if (err.code === "auth/credential-already-in-use") return;
+    console.warn("No se pudo vincular email/contraseña:", err.code);
+  }
+}
 
 async function ensureUserDoc(user) {
   const ref = doc(db, "users", user.uid);
@@ -87,6 +111,14 @@ function LoginPage() {
       await signOut(auth);
       const result = await signInWithPopup(auth, googleProvider);
 
+      // Verificar si el email ya tiene método email/contraseña
+      const methods = await fetchSignInMethodsForEmail(auth, result.user.email);
+      if (methods.includes("password")) {
+        await signOut(auth);
+        setError("Este correo ya tiene cuenta con email/contraseña. Inicia sesión con esa opción.");
+        return;
+      }
+
       // Si venía de un intento fallido de GitHub, vincular automáticamente
       const pendingToken = sessionStorage.getItem("pendingGithubToken");
       if (pendingToken) {
@@ -100,6 +132,7 @@ function LoginPage() {
       }
 
       await ensureUserDoc(result.user);
+      await linkEmailPassword(result.user);
       navigate("/Welcome", { replace: true });
 
     } catch (err) {
@@ -120,7 +153,16 @@ function LoginPage() {
       setError("");
       await signOut(auth);
       const result = await signInWithPopup(auth, githubProvider);
+
+      const methods = await fetchSignInMethodsForEmail(auth, result.user.email);
+      if (methods.includes("password")) {
+        await signOut(auth);
+        setError("Este correo ya tiene cuenta con email/contraseña. Inicia sesión con esa opción.");
+        return;
+      }
+
       await ensureUserDoc(result.user);
+      await linkEmailPassword(result.user);
       navigate("/Welcome", { replace: true });
 
     } catch (err) {
@@ -148,7 +190,15 @@ function LoginPage() {
       await signOut(auth);
       const result = await signInWithPopup(auth, facebookProvider);
       if (result?.user) {
+        const methods = await fetchSignInMethodsForEmail(auth, result.user.email);
+        if (methods.includes("password")) {
+          await signOut(auth);
+          setError("Este correo ya tiene cuenta con email/contraseña. Inicia sesión con esa opción.");
+          return;
+        }
+
         await ensureUserDoc(result.user);
+        await linkEmailPassword(result.user);
         navigate("/Welcome", { replace: true });
       }
     } catch (err) {
