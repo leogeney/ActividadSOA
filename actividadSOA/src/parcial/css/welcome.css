@@ -81,6 +81,36 @@ h1 {
   margin-bottom: 1.5rem;
 }
 
+.pwd-banner {
+  background: rgba(250, 204, 21, 0.1);
+  border: 1px solid rgba(250, 204, 21, 0.25);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+.pwd-banner strong {
+  display: block;
+  color: #fbbf24;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+.pwd-banner code {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: #fde68a;
+  font-size: 0.9rem;
+  font-family: monospace;
+  letter-spacing: 1px;
+  user-select: all;
+}
+.pwd-hint {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  margin-top: 6px;
+}
 .message {
   background: rgba(168, 85, 247, 0.12);
   border: 1px solid rgba(168, 85, 247, 0.25);

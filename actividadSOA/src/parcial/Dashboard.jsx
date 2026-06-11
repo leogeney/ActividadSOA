@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { auth, db } from "./Firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth, db, googleProvider, githubProvider, facebookProvider } from "./Firebase";
+import { onAuthStateChanged, signOut, linkWithPopup, GoogleAuthProvider, GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
 import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
@@ -31,6 +31,9 @@ function Dashboard() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [takenSlots, setTakenSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [linkedProviders, setLinkedProviders] = useState([]);
+  const [linkingProvider, setLinkingProvider] = useState(null);
+  const [linkMsg, setLinkMsg] = useState("");
 
   const navigate = useNavigate();
 
@@ -69,6 +72,40 @@ function Dashboard() {
   const handleLogout = async () => {
     await signOut(auth);
     navigate("/", { replace: true });
+  };
+
+  // ── Vincular proveedores OAuth ──
+  const refreshLinkedProviders = () => {
+    if (!user) return;
+    const providers = user.providerData.map((p) => p.providerId);
+    setLinkedProviders(providers);
+  };
+
+  useEffect(() => {
+    if (user) refreshLinkedProviders();
+  }, [user]);
+
+  const handleLinkProvider = async (providerName) => {
+    if (!user) return;
+    setLinkingProvider(providerName);
+    setLinkMsg("");
+    try {
+      let provider;
+      if (providerName === "google") provider = googleProvider;
+      else if (providerName === "github") provider = githubProvider;
+      else if (providerName === "facebook") provider = facebookProvider;
+      await linkWithPopup(user, provider);
+      refreshLinkedProviders();
+      setLinkMsg(`${providerName} vinculado correctamente`);
+    } catch (err) {
+      if (err.code === "auth/credential-already-in-use") {
+        setLinkMsg(`${providerName} ya está vinculado a otra cuenta`);
+      } else if (err.code !== "auth/cancelled-popup-request") {
+        setLinkMsg("Error: " + err.code);
+      }
+    } finally {
+      setLinkingProvider(null);
+    }
   };
 
   const formatDate = (ts) => {
@@ -986,6 +1023,67 @@ function Dashboard() {
                 <InfoCard label="Correo Electrónico" value={user?.email} icon="✉️" />
                 <InfoCard label="Fecha de Alta" value={formatDate(userData?.tiempoInicial || userData?.createdAt)} icon="📅" />
                 <InfoCard label="Última Salida" value={formatDate(userData?.salida)} icon="🕐" />
+              </div>
+
+              <div style={styles.divider} />
+
+              {/* Link providers */}
+              <h3 style={styles.sectionLabel}>Vincular Cuentas</h3>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: -8, marginBottom: 12 }}>
+                Vincula proveedores para poder iniciar sesión con cualquiera de ellos usando el mismo correo.
+              </p>
+              {linkMsg && (
+                <p style={{
+                  padding: "8px 12px", borderRadius: 8, marginBottom: 10, fontSize: 13,
+                  background: linkMsg.includes("Error") ? "rgba(251,113,133,0.15)" : "rgba(74,222,128,0.15)",
+                  color: linkMsg.includes("Error") ? "#fb7185" : "#4ade80",
+                  border: `1px solid ${linkMsg.includes("Error") ? "rgba(251,113,133,0.3)" : "rgba(74,222,128,0.3)"}`,
+                }}>
+                  {linkMsg}
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {[
+                  { id: "google", label: "Google", color: "#ea4335", icon: "G" },
+                  { id: "facebook", label: "Facebook", color: "#1877f2", icon: "f" },
+                  { id: "github", label: "GitHub", color: "#f0f6fc", icon: "⚙" },
+                ].map((p) => {
+                  const isLinked = linkedProviders.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => !isLinked && handleLinkProvider(p.id)}
+                      disabled={isLinked || linkingProvider !== null}
+                      style={{
+                        padding: "10px 18px",
+                        borderRadius: 10,
+                        border: `1px solid ${isLinked ? "rgba(74,222,128,0.3)" : "rgba(255,255,255,0.12)"}`,
+                        background: isLinked ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.05)",
+                        color: isLinked ? "#4ade80" : "rgba(255,255,255,0.7)",
+                        cursor: isLinked ? "default" : "pointer",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        opacity: linkingProvider === p.id ? 0.6 : 1,
+                      }}
+                    >
+                      <span style={{
+                        width: 28, height: 28, borderRadius: 6, display: "flex",
+                        alignItems: "center", justifyContent: "center",
+                        background: isLinked ? "rgba(74,222,128,0.2)" : p.color + "22",
+                        color: isLinked ? "#4ade80" : p.color,
+                        fontWeight: 700, fontSize: 14,
+                      }}>
+                        {isLinked ? "✓" : p.icon}
+                      </span>
+                      {p.label}
+                      {isLinked && <span style={{ fontSize: 11, opacity: 0.6 }}>(vinculado)</span>}
+                      {linkingProvider === p.id && <span style={{ fontSize: 11 }}>vinculando...</span>}
+                    </button>
+                  );
+                })}
               </div>
 
               <div style={styles.divider} />
