@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FaEnvelope } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { auth } from "./Firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
@@ -102,7 +103,7 @@ await sendPasswordResetEmail(
         ) : (
           <>
             <div className="reset-modal-content">
-              <p style={{ fontSize: "40px" }}>📬</p>
+              <p style={{ fontSize: "40px" }}><FaEnvelope /></p>
 
               <h3>Correo enviado</h3>
 

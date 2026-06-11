@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FaKey } from "react-icons/fa";
 import { auth } from "./Firebase";
 import { useNavigate } from "react-router-dom";
 
@@ -39,7 +40,7 @@ function WelcomePage() {
 
         {autoPwd && (
           <div className="pwd-banner">
-            <strong>🔑 Tu contraseña de respaldo:</strong>
+            <strong><FaKey style={{marginRight:6}} /> Tu contraseña de respaldo:</strong>
             <code>{autoPwd}</code>
             <p className="pwd-hint">Con este correo y contraseña puedes iniciar sesión si falla tu proveedor.</p>
           </div>
