@@ -7,7 +7,8 @@ import ForgotPage from "./parcial/ForgotPage";
 import ResetPage from "./parcial/ResetPage";
 import Welcome from "./parcial/Welcome"; 
 import Dashboard from "./parcial/Dashboard";
-import ResetPasswordPage from "./parcial/ResetPasswordPage";  
+import ResetPasswordPage from "./parcial/ResetPasswordPage";
+import PrivateRoute from "./parcial/PrivateRoute";  
     
 
 
@@ -20,9 +21,9 @@ function Parcial1() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot" element={<ForgotPage />} />
         <Route path="/reset" element={<ResetPage />} />
-        <Route path="/Welcome" element={<Welcome />} />
-        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/Welcome" element={<PrivateRoute><Welcome /></PrivateRoute>} />
+        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         
       </Routes>
     </BrowserRouter>

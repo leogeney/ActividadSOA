@@ -9,7 +9,7 @@ import {
   GithubAuthProvider,
   signOut, FacebookAuthProvider
 } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, addDoc, collection, query, where, updateDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 function generatePassword() {
@@ -56,6 +56,43 @@ async function ensureUserDoc(user) {
   }
 }
 
+async function logAudit(user, metodo) {
+  try {
+    const q = query(
+      collection(db, "auditLogs"),
+      where("userId", "==", user.uid)
+    );
+    const snap = await getDocs(q);
+    const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    docs.sort((a, b) => {
+      const ta = a.horaIngreso?.toDate?.()?.getTime?.() || 0;
+      const tb = b.horaIngreso?.toDate?.()?.getTime?.() || 0;
+      return tb - ta;
+    });
+    for (const d of docs) {
+      if (d.estado === "activa") {
+        await updateDoc(doc(db, "auditLogs", d.id), {
+          horaSalida: serverTimestamp(),
+          estado: "cerrada",
+        });
+      }
+    }
+    const docRef = await addDoc(collection(db, "auditLogs"), {
+      userId: user.uid,
+      email: user.email || "",
+      nombre: user.displayName || user.email?.split("@")[0] || "",
+      metodo: metodo,
+      horaIngreso: serverTimestamp(),
+      horaSalida: null,
+      duracion: null,
+      estado: "activa",
+    });
+    sessionStorage.setItem("audit_" + user.uid, docRef.id);
+  } catch (e) {
+    console.warn("Error logging audit:", e);
+  }
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const [form, setForm]       = useState({ email: "", password: "" });
@@ -80,7 +117,8 @@ function LoginPage() {
     try {
       setLoading(true);
       setError("");
-      await signInWithEmailAndPassword(auth, form.email, form.password);
+      const result = await signInWithEmailAndPassword(auth, form.email, form.password);
+      await logAudit(result.user, "email");
       navigate("/Welcome", { replace: true });
     } catch (err) {
       switch (err.code) {
@@ -133,6 +171,7 @@ function LoginPage() {
 
       await ensureUserDoc(result.user);
       await linkEmailPassword(result.user);
+      await logAudit(result.user, "google");
       navigate("/Welcome", { replace: true });
 
     } catch (err) {
@@ -163,6 +202,7 @@ function LoginPage() {
 
       await ensureUserDoc(result.user);
       await linkEmailPassword(result.user);
+      await logAudit(result.user, "github");
       navigate("/Welcome", { replace: true });
 
     } catch (err) {
@@ -199,6 +239,7 @@ function LoginPage() {
 
         await ensureUserDoc(result.user);
         await linkEmailPassword(result.user);
+        await logAudit(result.user, "facebook");
         navigate("/Welcome", { replace: true });
       }
     } catch (err) {

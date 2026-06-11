@@ -201,3 +201,20 @@ button.facebook:hover {
 .links a:hover {
   color: #fff;
 }
+
+/* Spinner for PrivateRoute */
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255,255,255,0.1);
+  border-top: 5px solid #a855f7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin: -25px 0 0 -25px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
