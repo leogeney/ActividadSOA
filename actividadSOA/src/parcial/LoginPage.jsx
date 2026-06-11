@@ -62,7 +62,7 @@ function LoginPage() {
       switch (err.code) {
         case "auth/user-not-found":
         case "auth/invalid-credential":
-          setError("El usuario no existe o la contraseña es incorrecta");
+          setError("Ya la cuenta existe con otra aunteticación");
           break;
         case "auth/wrong-password":
           setError("Contraseña incorrecta");
