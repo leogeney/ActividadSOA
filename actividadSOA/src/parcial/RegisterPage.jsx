@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FaCheck, FaTimes } from "react-icons/fa";
 import { auth, db } from "./Firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
@@ -199,23 +200,23 @@ function RegisterPage() {
   />
 
   <div style={{ marginTop: "8px", fontSize: "12px", lineHeight: "1.6" }}>
-    <small style={{ color: password.length >= 8 ? "green" : "red" }}>
-      {password.length >= 8 ? "✓" : "✗"} Mínimo 8 caracteres
+    <small style={{ color: password.length >= 10 ? "green" : "red" }}>
+      {password.length >= 10 ? <FaCheck style={{color:"#4ade80",flexShrink:0}} /> : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Mínimo 10 caracteres
     </small>
     <br />
 
     <small style={{ color: /[A-Z]/.test(password) ? "green" : "red" }}>
-      {/[A-Z]/.test(password) ? "✓" : "✗"} Al menos una letra mayúscula
+      {/[A-Z]/.test(password) ? <FaCheck style={{color:"#4ade80",flexShrink:0}} /> : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Al menos una letra mayúscula
     </small>
     <br />
 
     <small style={{ color: /[a-z]/.test(password) ? "green" : "red" }}>
-      {/[a-z]/.test(password) ? "✓" : "✗"} Al menos una letra minúscula
+      {/[a-z]/.test(password) ? <FaCheck style={{color:"#4ade80",flexShrink:0}} /> : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Al menos una letra minúscula
     </small>
     <br />
 
     <small style={{ color: /\d/.test(password) ? "green" : "red" }}>
-      {/\d/.test(password) ? "✓" : "✗"} Al menos un número
+      {/\d/.test(password) ? <FaCheck style={{color:"#4ade80",flexShrink:0}} /> : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Al menos un número
     </small>
     <br />
 
@@ -226,7 +227,7 @@ function RegisterPage() {
           : "red"
       }}
     >
-      {/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "✓" : "✗"} Al menos un carácter especial
+      {/[!@#$%^&*(),.?":{}|<>]/.test(password) ? <FaCheck style={{color:"#4ade80",flexShrink:0}} /> : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Al menos un carácter especial
     </small>
   </div>
 </div>
