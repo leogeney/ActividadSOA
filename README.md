@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📋 Parcial II — Arquitectura Orientada a Servicios (SOA)
+# 📋 EXAMEN FINAL — Arquitectura Orientada a Servicios (SOA)
 
 ![JavaScript](https://img.shields.io/badge/JavaScript-87.8%25-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![CSS](https://img.shields.io/badge/CSS-11.4%25-1572B6?style=for-the-badge&logo=css3&logoColor=white)
