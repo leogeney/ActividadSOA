@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FaCheck, FaTimes } from "react-icons/fa";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { auth } from "./Firebase";
 import { confirmPasswordReset } from "firebase/auth";
@@ -17,8 +18,8 @@ function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
 
   const validatePassword = (pass) => {
-    if (pass.length < 8)
-      return "La contraseña debe tener mínimo 8 caracteres";
+    if (pass.length < 10)
+      return "La contraseña debe tener mínimo 10 caracteres";
 
     if (!/[A-Z]/.test(pass))
       return "Debe contener al menos una mayúscula";
@@ -123,23 +124,23 @@ function ResetPasswordPage() {
                 lineHeight: "1.6"
               }}
             >
-              <small style={{ color: password.length >= 8 ? "green" : "red" }}>
-                {password.length >= 8 ? "✓" : "✗"} Mínimo 8 caracteres
+              <small style={{ color: password.length >= 10 ? "green" : "red" }}>
+                {password.length >= 10 ? <FaCheck style={{color:"#4ade80",flexShrink:0}} /> : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Mínimo 10 caracteres
               </small>
               <br />
 
               <small style={{ color: /[A-Z]/.test(password) ? "green" : "red" }}>
-                {/[A-Z]/.test(password) ? "✓" : "✗"} Una mayúscula
+                {/[A-Z]/.test(password) ? <FaCheck style={{color:"#4ade80",flexShrink:0}} /> : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Una mayúscula
               </small>
               <br />
 
               <small style={{ color: /[a-z]/.test(password) ? "green" : "red" }}>
-                {/[a-z]/.test(password) ? "✓" : "✗"} Una minúscula
+                {/[a-z]/.test(password) ? <FaCheck style={{color:"#4ade80",flexShrink:0}} /> : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Una minúscula
               </small>
               <br />
 
               <small style={{ color: /\d/.test(password) ? "green" : "red" }}>
-                {/\d/.test(password) ? "✓" : "✗"} Un número
+                {/\d/.test(password) ? <FaCheck style={{color:"#4ade80",flexShrink:0}} /> : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Un número
               </small>
               <br />
 
@@ -151,8 +152,8 @@ function ResetPasswordPage() {
                 }}
               >
                 {/[!@#$%^&*(),.?":{}|<>]/.test(password)
-                  ? "✓"
-                  : "✗"} Un carácter especial
+                  ? <FaCheck style={{color:"#4ade80",flexShrink:0}} />
+                  : <FaTimes style={{color:"#fb7185",flexShrink:0}} />} Un carácter especial
               </small>
             </div>
 
@@ -180,7 +181,7 @@ function ResetPasswordPage() {
         ) : (
           <>
             <div className="reset-modal-content">
-              <p style={{ fontSize: "40px" }}>✅</p>
+              <p style={{ fontSize: "40px" }}><FaCheck /></p>
               <h3>Contraseña actualizada</h3>
               <p>Ya puedes iniciar sesión con tu nueva contraseña</p>
             </div>

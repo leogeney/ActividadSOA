@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FaUser, FaEnvelope } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { auth, db } from "./Firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
@@ -137,7 +138,7 @@ function ForgotPage() {
               textAlign: "center",
               marginBottom: "20px"
             }}>
-              <p style={{ fontSize: "28px", marginBottom: "8px" }}>👤</p>
+              <p style={{ fontSize: "28px", marginBottom: "8px" }}><FaUser /></p>
               <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "14px" }}>
                 Encontramos una cuenta asociada a ese número
               </p>
@@ -180,7 +181,7 @@ function ForgotPage() {
               color: "#86efac",
               marginBottom: "16px"
             }}>
-              <p style={{ fontSize: "32px", marginBottom: "8px" }}>📬</p>
+              <p style={{ fontSize: "32px", marginBottom: "8px" }}><FaEnvelope /></p>
               <p><strong>Correo enviado correctamente</strong></p>
               <p style={{ fontSize: "13px", marginTop: "6px" }}>
                 Revisa tu bandeja de entrada en{" "}

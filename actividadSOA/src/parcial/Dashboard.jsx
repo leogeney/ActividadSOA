@@ -1,8 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { auth, db, googleProvider, githubProvider, facebookProvider } from "./Firebase";
 import { onAuthStateChanged, signOut, linkWithPopup, GoogleAuthProvider, GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
-import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, limit, startAfter } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { jsPDF } from "jspdf";
+import { applyPlugin } from "jspdf-autotable";
+applyPlugin(jsPDF);
+import { 
+  FaHome, FaCalendarAlt, FaClipboardList, FaUser, FaGem, FaShieldAlt,
+  FaSearch, FaTimes, FaFilePdf, FaClock, FaPhone, FaIdCard, FaEnvelope,
+  FaKey, FaHandPeace, FaExclamationTriangle, FaTrash, FaGithub,
+  FaCheck, FaPlus, FaEdit, FaEye, FaArrowRight, FaGoogle, FaFacebook
+} from "react-icons/fa";
 
 function Dashboard() {
   const [user, setUser] = useState(null);
@@ -34,6 +43,12 @@ function Dashboard() {
   const [linkedProviders, setLinkedProviders] = useState([]);
   const [linkingProvider, setLinkingProvider] = useState(null);
   const [linkMsg, setLinkMsg] = useState("");
+
+  // ── Audit logs state ──
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditSearch, setAuditSearch] = useState("");
+  const [auditFilter, setAuditFilter] = useState("todas");
+  const [loadingAudit, setLoadingAudit] = useState(false);
 
   const navigate = useNavigate();
 
@@ -69,7 +84,43 @@ function Dashboard() {
     return () => unsubscribe();
   }, [navigate]);
 
+  const closeAuditSession = async () => {
+    if (!user) return;
+    try {
+      const q = query(
+        collection(db, "auditLogs"),
+        where("userId", "==", user.uid)
+      );
+      const snap = await getDocs(q);
+      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => {
+        const ta = a.horaIngreso?.toDate?.()?.getTime?.() || 0;
+        const tb = b.horaIngreso?.toDate?.()?.getTime?.() || 0;
+        return tb - ta;
+      });
+      for (const docData of docs) {
+        if (docData.estado === "activa") {
+          const ingressTime = docData.horaIngreso?.toDate?.() || new Date();
+          const now = new Date();
+          const durationMs = now.getTime() - ingressTime.getTime();
+          const mins = Math.floor(durationMs / 60000);
+          const hrs = Math.floor(mins / 60);
+          const duracion = hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+          await updateDoc(doc(db, "auditLogs", docData.id), {
+            horaSalida: serverTimestamp(),
+            duracion: duracion,
+            estado: "cerrada",
+          });
+          break;
+        }
+      }
+    } catch (e) {
+      console.warn("Error closing audit:", e);
+    }
+  };
+
   const handleLogout = async () => {
+    await closeAuditSession();
     await signOut(auth);
     navigate("/", { replace: true });
   };
@@ -80,6 +131,39 @@ function Dashboard() {
     const providers = user.providerData.map((p) => p.providerId);
     setLinkedProviders(providers);
   };
+
+  // ── Detectar cierre de navegador ──
+  useEffect(() => {
+    if (!user) return;
+    const projectId = "claseyhoryi";
+    const handleBeforeUnload = async () => {
+      const auditId = sessionStorage.getItem("audit_" + user.uid);
+      if (auditId) {
+        try {
+          const token = await user.getIdToken();
+          const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/auditLogs/${auditId}`;
+          const now = new Date().toISOString();
+          fetch(url, {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              fields: {
+                estado: { stringValue: "cerrada" },
+                horaSalida: { timestampValue: now },
+                duracion: { stringValue: "sesión cerrada" },
+              },
+            }),
+            keepalive: true,
+          });
+        } catch (_) {}
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [user]);
 
   useEffect(() => {
     if (user) refreshLinkedProviders();
@@ -106,6 +190,106 @@ function Dashboard() {
     } finally {
       setLinkingProvider(null);
     }
+  };
+
+  // ── Audit logs ──
+  const fetchAuditLogs = async () => {
+    setLoadingAudit(true);
+    try {
+      let q;
+      if (role === "admin") {
+        q = query(collection(db, "auditLogs"));
+      } else {
+        q = query(
+          collection(db, "auditLogs"),
+          where("userId", "==", user?.uid || "")
+        );
+      }
+      const snap = await getDocs(q);
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => {
+        const ta = a.horaIngreso?.toDate?.()?.getTime?.() || 0;
+        const tb = b.horaIngreso?.toDate?.()?.getTime?.() || 0;
+        return tb - ta;
+      });
+      setAuditLogs(list);
+    } catch (e) {
+      console.error("Error fetching audit logs:", e);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "audit" && user && role === "admin") fetchAuditLogs();
+  }, [activeTab, user, role]);
+
+  const filteredAuditLogs = auditLogs.filter((log) => {
+    const matchSearch =
+      !auditSearch ||
+      log.email?.toLowerCase().includes(auditSearch.toLowerCase()) ||
+      log.nombre?.toLowerCase().includes(auditSearch.toLowerCase()) ||
+      log.metodo?.toLowerCase().includes(auditSearch.toLowerCase());
+    const matchFilter =
+      auditFilter === "todas" ||
+      log.estado === auditFilter ||
+      log.metodo === auditFilter;
+    return matchSearch && matchFilter;
+  });
+
+  const exportPDF = async () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Reporte General", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, 14, 22);
+
+    // ── Sección: Usuarios registrados ──
+    doc.setFontSize(14);
+    doc.text("Usuarios Registrados", 14, 32);
+    doc.setFontSize(10);
+    let allUsers = [];
+    try {
+      const snap = await getDocs(collection(db, "users"));
+      allUsers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch (_) {}
+
+    const userRows = allUsers.map((u) => [
+      u.nombre || "", u.apellido || "", u.email || "", u.role || "user",
+      u.activo !== false ? "Activo" : "Inactivo",
+    ]);
+    doc.autoTable({
+      startY: 36,
+      head: [["Nombre", "Apellido", "Email", "Rol", "Estado"]],
+      body: userRows,
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [120, 50, 220] },
+    });
+
+    // ── Sección: Auditoría de accesos ──
+    const auditStartY = doc.lastAutoTable.finalY + 12;
+    doc.setFontSize(14);
+    doc.text("Auditoría de Accesos", 14, auditStartY - 4);
+
+    const rows = filteredAuditLogs.map((log) => [
+      log.nombre || log.email,
+      log.email,
+      log.metodo,
+      log.horaIngreso?.toDate?.().toLocaleString("es-CO") || "—",
+      log.horaSalida?.toDate?.().toLocaleString("es-CO") || "—",
+      log.duracion || "—",
+      log.estado,
+    ]);
+
+    doc.autoTable({
+      startY: auditStartY,
+      head: [["Nombre", "Email", "Método", "Ingreso", "Salida", "Duración", "Estado"]],
+      body: rows,
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [120, 50, 220] },
+    });
+
+    doc.save("reporte.pdf");
   };
 
   const formatDate = (ts) => {
@@ -381,9 +565,10 @@ function Dashboard() {
 
   // ── TABS unificados para ambos roles ──
   const tabs = [
-    { id: "home", label: role === "admin" ? "Directorio" : "Inicio", icon: "◈" },
-    { id: "appointments", label: "Citas", icon: "📅" },
-    { id: "profile", label: "Mi Perfil", icon: "◉" },
+    { id: "home", label: role === "admin" ? "Directorio" : "Inicio", icon: <FaHome /> },
+    { id: "appointments", label: "Citas", icon: <FaCalendarAlt /> },
+    ...(role === "admin" ? [{ id: "audit", label: "Auditoría", icon: <FaClipboardList /> }] : []),
+    { id: "profile", label: "Mi Perfil", icon: <FaUser /> },
   ];
 
   if (loading) {
@@ -414,7 +599,7 @@ function Dashboard() {
         <div style={styles.headerInner}>
           {/* Logo / Brand */}
           <div style={styles.brand}>
-            <div style={styles.brandIcon}>⬡</div>
+            <div style={styles.brandIcon}><FaGem /></div>
             <span style={styles.brandName}>LOS GALACTICOS</span>
           </div>
 
@@ -430,7 +615,7 @@ function Dashboard() {
                 }}
                 className="nav-btn"
               >
-                <span style={{ marginRight: "7px", fontSize: "12px" }}>{tab.icon}</span>
+                <span style={{ marginRight: "7px", fontSize: "14px", display: "flex" }}>{tab.icon}</span>
                 {tab.label}
                 {activeTab === tab.id && <span style={styles.navIndicator} />}
               </button>
@@ -481,7 +666,7 @@ function Dashboard() {
       {showLogoutConfirm && (
         <div style={styles.modalOverlay} onClick={() => setShowLogoutConfirm(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalIcon}>⚠</div>
+            <div style={styles.modalIcon}><FaExclamationTriangle /></div>
             <h3 style={styles.modalTitle}>¿Cerrar sesión?</h3>
             <p style={styles.modalText}>
               Tu sesión actual se cerrará y tendrás que volver a iniciar sesión para acceder.
@@ -518,7 +703,7 @@ function Dashboard() {
                 onClick={() => { setShowApptModal(false); resetApptForm(); }}
                 style={styles.apptModalClose}
               >
-                ✕
+                <FaTimes />
               </button>
             </div>
             <form onSubmit={handleApptSubmit} style={styles.apptForm}>
@@ -854,7 +1039,7 @@ function Dashboard() {
       {deletingAppt && (
         <div style={styles.modalOverlay} onClick={() => setDeletingAppt(null)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalIcon}>🗑</div>
+            <div style={styles.modalIcon}><FaTrash /></div>
             <h3 style={styles.modalTitle}>¿Eliminar cita?</h3>
             <p style={styles.modalText}>
               Se eliminará la cita de <strong>"{deletingAppt.cliente}"</strong> de forma permanente.
@@ -893,7 +1078,7 @@ function Dashboard() {
                     <div>
                       <h2 style={styles.cardTitle}>
                         Directorio de Usuarios
-                        <span style={{ marginLeft: 10, fontSize: 18 }}>🛡️</span>
+                        <span style={{ marginLeft: 10, fontSize: 16, display: "inline-flex" }}><FaShieldAlt /></span>
                       </h2>
                       <p style={styles.cardSubtitle}>Gestiona todos los miembros registrados</p>
                     </div>
@@ -903,7 +1088,7 @@ function Dashboard() {
                   </div>
 
                   <div style={styles.searchWrapper}>
-                    <span style={styles.searchIcon}>🔍</span>
+                    <span style={styles.searchIcon}><FaSearch /></span>
                     <input
                       type="text"
                       placeholder="Buscar por nombre, email, rol..."
@@ -913,7 +1098,7 @@ function Dashboard() {
                       className="search-input"
                     />
                     {search && (
-                      <button onClick={() => setSearch("")} style={styles.clearBtn}>✕</button>
+                      <button onClick={() => setSearch("")} style={styles.clearBtn}><FaTimes /></button>
                     )}
                   </div>
 
@@ -970,7 +1155,7 @@ function Dashboard() {
                 /* User welcome */
                 <div style={styles.welcomeBox}>
                   <AvatarImg photoURL={user?.photoURL} initials={getInitials()} size={80} />
-                  <h2 style={styles.welcomeTitle}>Bienvenido, {userData?.nombre || "Usuario"} 👋</h2>
+                  <h2 style={styles.welcomeTitle}>Bienvenido, {userData?.nombre || "Usuario"} <FaHandPeace style={{ marginLeft: 6 }} /></h2>
                   <p style={styles.welcomeSub}>
                     Accede a tu perfil desde el menú superior o desde el botón de abajo.
                   </p>
@@ -981,6 +1166,165 @@ function Dashboard() {
                   >
                     Ver mi perfil →
                   </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TAB: AUDIT ── */}
+          {activeTab === "audit" && (
+            <div style={styles.fadeIn}>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <h2 style={styles.cardTitle}>
+                    Auditoría de Accesos
+                    <span style={{ marginLeft: 10, fontSize: 16, display: "inline-flex" }}><FaClipboardList /></span>
+                  </h2>
+                  <p style={styles.cardSubtitle}>Registro de ingresos y salidas del sistema</p>
+                </div>
+                <button onClick={exportPDF} style={styles.exportBtn} className="btn-hover">
+                  <FaFilePdf style={{ marginRight: 6 }} /> Exportar PDF
+                </button>
+              </div>
+
+              {/* ── Usuarios registrados ── */}
+              <h3 style={{ ...styles.sectionLabel, marginTop: 0 }}>Usuarios Registrados</h3>
+              <div style={styles.tableWrapper}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      {["Nombre", "Apellido", "Email", "Rol", "Estado"].map((h) => (
+                        <th key={h} style={styles.th}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allUsers.length === 0 ? (
+                      <tr><td colSpan={5} style={{ ...styles.td, textAlign: "center", color: "#64748b" }}>No hay usuarios registrados</td></tr>
+                    ) : (
+                      allUsers.map((u, i) => (
+                        <tr key={u.uid || i} className="table-row" style={styles.tr}>
+                          <td style={styles.td}>{u.nombre || "—"}</td>
+                          <td style={styles.td}>{u.apellido || "—"}</td>
+                          <td style={styles.td}>{u.email}</td>
+                          <td style={styles.td}>
+                            <span style={{
+                              ...styles.miniBadge,
+                              border: `1px solid ${u.role === "admin" ? "#a855f7" : "#3b82f6"}`,
+                            }}>
+                              {u.role || "user"}
+                            </span>
+                          </td>
+                          <td style={styles.td}>
+                            <span style={{
+                              ...styles.statusBadge,
+                              color: u.activo !== false ? "#4ade80" : "#fb7185",
+                              background: u.activo !== false ? "rgba(74,222,128,0.1)" : "rgba(251,113,133,0.1)",
+                            }}>
+                              {u.activo !== false ? "● Activo" : "○ Inactivo"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={styles.divider} />
+
+              {/* ── Auditoría de accesos ── */}
+              <h3 style={styles.sectionLabel}>Historial de Accesos</h3>
+              <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                <div style={{ ...styles.searchWrapper, flex: 1, minWidth: 200 }}>
+                  <span style={styles.searchIcon}><FaSearch /></span>
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre, email, método..."
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    style={styles.searchInput}
+                    className="search-input"
+                  />
+                  {auditSearch && (
+                    <button onClick={() => setAuditSearch("")} style={styles.clearBtn}><FaTimes /></button>
+                  )}
+                </div>
+                <select
+                  value={auditFilter}
+                  onChange={(e) => setAuditFilter(e.target.value)}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "rgba(255,255,255,0.8)",
+                    fontSize: 14,
+                    outline: "none",
+                  }}
+                >
+                  <option value="todas">Todas</option>
+                  <option value="activa">Activas</option>
+                  <option value="cerrada">Cerradas</option>
+                  <option value="email">Email</option>
+                  <option value="google">Google</option>
+                  <option value="github">GitHub</option>
+                  <option value="facebook">Facebook</option>
+                </select>
+              </div>
+
+              {loadingAudit ? (
+                <p style={styles.empty}>Cargando...</p>
+              ) : filteredAuditLogs.length === 0 ? (
+                <p style={styles.empty}>
+                  {auditSearch || auditFilter !== "todas"
+                    ? "Sin resultados para la búsqueda."
+                    : "No hay registros de auditoría."}
+                </p>
+              ) : (
+                <div style={styles.tableWrapper}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        {["Usuario", "Email", "Método", "Ingreso", "Salida", "Duración", "Estado"].map((h) => (
+                          <th key={h} style={styles.th}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAuditLogs.map((log) => (
+                        <tr key={log.id} className="table-row" style={styles.tr}>
+                          <td style={styles.td}>{log.nombre || "—"}</td>
+                          <td style={styles.td}>{log.email}</td>
+                          <td style={styles.td}>
+                            <span style={{
+                              ...styles.miniBadge,
+                              border: `1px solid ${
+                                log.metodo === "google" ? "#ea4335"
+                                : log.metodo === "github" ? "#f0f6fc"
+                                : log.metodo === "facebook" ? "#1877f2"
+                                : "#a855f7"
+                              }`,
+                            }}>
+                              {log.metodo}
+                            </span>
+                          </td>
+                          <td style={styles.td}>{formatDate(log.horaIngreso)}</td>
+                          <td style={styles.td}>{formatDate(log.horaSalida)}</td>
+                          <td style={styles.td}>{log.duracion || "—"}</td>
+                          <td style={styles.td}>
+                            <span style={{
+                              ...styles.statusBadge,
+                              color: log.estado === "activa" ? "#4ade80" : "#fb7185",
+                              background: log.estado === "activa" ? "rgba(74,222,128,0.1)" : "rgba(251,113,133,0.1)",
+                            }}>
+                              {log.estado === "activa" ? "● Activa" : "○ Cerrada"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -1001,7 +1345,7 @@ function Dashboard() {
                       ? "linear-gradient(135deg,#a855f7,#7e22ce)"
                       : "linear-gradient(135deg,#3b82f6,#1d4ed8)",
                   }}>
-                    {role === "admin" ? "🛡️ Administrador" : "👤 Miembro"}
+                    {role === "admin" ? <><FaShieldAlt style={{ marginRight: 4 }} /> Administrador</> : <><FaUser style={{ marginRight: 4 }} /> Miembro</>}
                   </span>
                 </div>
                 <div style={{
@@ -1019,10 +1363,10 @@ function Dashboard() {
               {/* Info grid */}
               <h3 style={styles.sectionLabel}>Información Personal</h3>
               <div style={styles.infoGrid}>
-                <InfoCard label="Username" value={userData?.username || "No asignado"} icon="🪪" />
-                <InfoCard label="Correo Electrónico" value={user?.email} icon="✉️" />
-                <InfoCard label="Fecha de Alta" value={formatDate(userData?.tiempoInicial || userData?.createdAt)} icon="📅" />
-                <InfoCard label="Última Salida" value={formatDate(userData?.salida)} icon="🕐" />
+                <InfoCard label="Username" value={userData?.username || "No asignado"} icon={<FaIdCard />} />
+                <InfoCard label="Correo Electrónico" value={user?.email} icon={<FaEnvelope />} />
+                <InfoCard label="Fecha de Alta" value={formatDate(userData?.tiempoInicial || userData?.createdAt)} icon={<FaCalendarAlt />} />
+                <InfoCard label="Última Salida" value={formatDate(userData?.salida)} icon={<FaClock />} />
               </div>
 
               <div style={styles.divider} />
@@ -1046,7 +1390,7 @@ function Dashboard() {
                 {[
                   { id: "google", label: "Google", color: "#ea4335", icon: "G" },
                   { id: "facebook", label: "Facebook", color: "#1877f2", icon: "f" },
-                  { id: "github", label: "GitHub", color: "#f0f6fc", icon: "⚙" },
+                  { id: "github", label: "GitHub", color: "#f0f6fc", icon: <FaGithub /> },
                 ].map((p) => {
                   const isLinked = linkedProviders.includes(p.id);
                   return (
@@ -1076,7 +1420,7 @@ function Dashboard() {
                         color: isLinked ? "#4ade80" : p.color,
                         fontWeight: 700, fontSize: 14,
                       }}>
-                        {isLinked ? "✓" : p.icon}
+                        {isLinked ? <FaCheck style={{color:"#4ade80"}} /> : p.icon}
                       </span>
                       {p.label}
                       {isLinked && <span style={{ fontSize: 11, opacity: 0.6 }}>(vinculado)</span>}
@@ -1113,7 +1457,7 @@ function Dashboard() {
                 <div>
                   <h2 style={styles.cardTitle}>
                     Citas
-                    <span style={{ marginLeft: 10, fontSize: 18 }}>📅</span>
+                    <span style={{ marginLeft: 10, fontSize: 16, display: "inline-flex" }}><FaCalendarAlt /></span>
                   </h2>
                   <p style={styles.cardSubtitle}>Administra las citas agendadas</p>
                 </div>
@@ -1128,7 +1472,7 @@ function Dashboard() {
               </div>
 
               <div style={styles.searchWrapper}>
-                <span style={styles.searchIcon}>🔍</span>
+                <span style={styles.searchIcon}><FaSearch /></span>
                 <input
                   type="text"
                   placeholder={role === "admin" ? "Buscar por cliente, servicio, estado..." : "Buscar en mis citas..."}
@@ -1138,7 +1482,7 @@ function Dashboard() {
                   className="search-input"
                 />
                 {apptSearch && (
-                  <button onClick={() => setApptSearch("")} style={styles.clearBtn}>✕</button>
+                  <button onClick={() => setApptSearch("")} style={styles.clearBtn}><FaTimes /></button>
                 )}
               </div>
 
@@ -1167,7 +1511,7 @@ function Dashboard() {
                               <div style={{ fontWeight: "600" }}>{a.cliente || "Sin nombre"}</div>
                               {a.telefono && (
                                 <div style={{ fontSize: "11px", opacity: 0.5, marginTop: "2px" }}>
-                                  📞 {a.telefono}
+<FaPhone style={{ marginRight: 4 }} /> {a.telefono}
                                 </div>
                               )}
                             </td>
@@ -1585,6 +1929,12 @@ const styles = {
     background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
     color: "#fb7185", padding: "11px 22px", borderRadius: "12px",
     cursor: "pointer", fontSize: "14px", fontWeight: "600",
+  },
+  exportBtn: {
+    display: "flex", alignItems: "center", gap: "6px",
+    background: "linear-gradient(135deg,#a855f7,#3b82f6)",
+    border: "none", borderRadius: "10px", padding: "10px 18px",
+    color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer",
   },
   empty: { color: "#64748b", textAlign: "center", padding: "40px 0", fontSize: "14px" },
 
