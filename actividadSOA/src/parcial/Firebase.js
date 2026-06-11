@@ -21,8 +21,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
 export const githubProvider = new GithubAuthProvider();
 githubProvider.setCustomParameters({ 
-  login: " " // ← espacio fuerza a GitHub a mostrar el login siempre
+  login: " "
 });
+githubProvider.addScope("user:email");
 
 export const facebookProvider = new FacebookAuthProvider();
 facebookProvider.setCustomParameters({ auth_type: "reauthenticate" });
