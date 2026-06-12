@@ -243,7 +243,7 @@ firebase deploy
 
 ### 🌐 URL Pública
 
-> 🔗 [https://actividadsoa.web.app]((https://claseyhoryi.web.app/)) 
+> 🔗 https://claseyhoryi.web.app/
 
 ---
 
